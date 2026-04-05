@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="קלוריות">
+<meta name="theme-color" content="#16a34a">
+<meta name="description" content="מעקב קלוריות אישי — אביחי">
+<title>מעקב קלוריות — אביחי</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- PWA Manifest (inline via blob) -->
+<script>
+(function(){
+  const manifest = {
+    name: "מעקב קלוריות",
+    short_name: "קלוריות",
+    description: "מעקב קלוריות יומי עם מאגר ישראלי",
+    start_url: "./",
+    display: "standalone",
+    background_color: "#ffffff",
+    theme_color: "#16a34a",
+    dir: "rtl",
+    lang: "he",
+    orientation: "portrait",
+    icons: [
+      { src: "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#16a34a"/><text x="96" y="130" font-size="110" text-anchor="middle">🥗</text></svg>'), sizes: "192x192", type: "image/svg+xml" },
+      { src: "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="#16a34a"/><text x="256" y="350" font-size="300" text-anchor="middle">🥗</text></svg>'), sizes: "512x512", type: "image/svg+xml" }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const link = document.createElement('link');
+  link.rel = 'manifest'; link.href = url;
+  document.head.appendChild(link);
+})();
+</script>
+
+<!-- Apple touch icon (inline SVG) -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%2316a34a'/><text x='90' y='125' font-size='100' text-anchor='middle'>🥗</text></svg>">
+
+<!-- ══════════════════════════════════════════
+     🔥 FIREBASE CONFIG
+     להגדרה: הכנס כאן את פרטי הפרויקט שלך מ-Firebase
+     ══════════════════════════════════════════ -->
+<script>
+  const FIREBASE_CONFIG = {
+    // ✏️ הדבק כאן את ה-firebaseConfig שלך מ-Firebase Console
+    // דוגמה:
+    // apiKey: "AIzaSy...",
+    // authDomain: "my-app.firebaseapp.com",
+    // databaseURL: "https://my-app-default-rtdb.firebaseio.com",
+    // projectId: "my-app",
+    // storageBucket: "my-app.appspot.com",
+    // messagingSenderId: "123456",
+    // appId: "1:123456:web:abc"
+  };
+  const FIREBASE_USER_ID = "avichai"; // מזהה ייחודי לנתונים שלך
+  const USE_FIREBASE = Object.keys(FIREBASE_CONFIG).length > 0;
+</script>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Heebo', 'Segoe UI', Arial, sans-serif;
+  background: #ffffff;
+  color: #1a2940;
+  direction: rtl;
+  min-height: 100vh;
+  -webkit-tap-highlight-color: transparent;
+}
+:root {
+  --bg: #ffffff;
+  --card: #ffffff;
+  --card2: #f5f8fd;
+  --border: #e2eaf5;
+  --accent: #16a34a;
+  --accent-light: #dcfce7;
+  --accent-dim: #bbf7d0;
+  --text: #1a2940;
+  --muted: #5a7299;
+  --dim: #94afc8;
+  --danger: #dc2626;
+  --danger-light: #fee2e2;
+  --warning: #d97706;
+  --warning-light: #fef3c7;
+  --blue: #2563eb;
+  --blue-light: #dbeafe;
+  --purple: #7c3aed;
+  --purple-light: #ede9fe;
+  --teal: #0d9488;
+  --teal-light: #ccfbf1;
+}
+input, select, button { font-family: inherit; }
+input:focus, select:focus { outline: none; border-color: var(--blue) !important; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: #c8d9f0; border-radius: 2px; }
+.hide-scroll::-webkit-scrollbar { display: none; }
+
+/* Cards */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: 0 2px 12px rgba(30,60,120,0.06); }
+.card-sm { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; box-shadow: 0 1px 4px rgba(30,60,120,0.05); }
+
+/* Inputs */
+.input {
+  width: 100%; background: #fff; border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 10px 14px; color: var(--text);
+  font-size: 15px; transition: border-color 0.2s;
+}
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: linear-gradient(135deg, #16a34a, #15803d); color: #fff;
+  border: none; border-radius: 12px; padding: 12px 24px;
+  font-weight: 700; font-size: 15px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(22,163,74,0.3); transition: transform 0.15s, box-shadow 0.15s; }
+.btn:active { transform: scale(0.97); }
+.btn-blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 4px 14px rgba(37,99,235,0.25); }
+.btn-purple { background: linear-gradient(135deg, #7c3aed, #6d28d9); box-shadow: 0 4px 14px rgba(124,58,237,0.3); }
+.btn-teal { background: linear-gradient(135deg, #0d9488, #0f766e); box-shadow: 0 4px 14px rgba(13,148,136,0.3); }
+.btn-red { background: linear-gradient(135deg, #dc2626, #b91c1c); box-shadow: 0 4px 14px rgba(220,38,38,0.3); }
+.btn-gold { background: linear-gradient(135deg, #d97706, #b45309); box-shadow: 0 4px 14px rgba(217,119,6,0.3); }
+.btn-ghost { background: transparent; color: var(--muted); border: 1.5px solid var(--border); box-shadow: none; }
+.btn-ghost:active { background: var(--card2); }
+.btn-w { width: 100%; }
+.btn-sm { padding: 8px 16px; font-size: 13px; border-radius: 10px; }
+
+/* Chips */
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px;
+  border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer;
+  border: 1.5px solid var(--border); background: var(--card); transition: all 0.15s; }
+.chip:active { transform: scale(0.95); }
+
+/* Tab bar */
+.tabs { display: flex; gap: 6px; margin-bottom: 18px; }
+.tab { flex: 1; padding: 9px 4px; border-radius: 10px; border: none;
+  background: var(--card2); color: var(--muted); font-weight: 700;
+  font-size: 11px; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.tab.active-blue   { background: linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; box-shadow:0 4px 10px rgba(0,0,0,.15); }
+.tab.active-teal   { background: linear-gradient(135deg,#0d9488,#0f766e); color:#fff; box-shadow:0 4px 10px rgba(0,0,0,.15); }
+.tab.active-purple { background: linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; box-shadow:0 4px 10px rgba(0,0,0,.15); }
+.tab.active-gold   { background: linear-gradient(135deg,#d97706,#b45309); color:#fff; box-shadow:0 4px 10px rgba(0,0,0,.15); }
+
+/* Label */
+.lbl { display: block; margin-bottom: 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+
+/* Progress */
+.progress-track { height: 6px; background: var(--card2); border-radius: 3px; overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 3px; transition: width 0.7s cubic-bezier(.4,0,.2,1); }
+
+/* Screens */
+#app { max-width: 480px; margin: 0 auto; padding-bottom: 90px; }
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* Modal overlay */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,40,90,0.35);
+  z-index: 100; align-items: flex-end; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal-box { background: var(--card); border-radius: 24px 24px 0 0;
+  width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto;
+  border: 1px solid var(--border); padding: 24px 20px 36px;
+  box-shadow: 0 -8px 40px rgba(30,60,120,0.15); }
+
+/* FAB */
+.fab { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  border: none; border-radius: 20px; padding: 14px 36px;
+  color: #fff; font-weight: 800; font-size: 16px; cursor: pointer;
+  font-family: inherit; box-shadow: 0 8px 28px rgba(22,163,74,0.4);
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  z-index: 50; transition: transform 0.15s; }
+.fab:active { transform: translateX(-50%) scale(0.97); }
+
+/* Sync badge */
+#sync-badge { position: fixed; top: 12px; left: 12px; z-index: 200;
+  background: var(--accent); color: #fff; border-radius: 20px;
+  padding: 4px 10px; font-size: 11px; font-weight: 700; display: none; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.fade-in { animation: fadeIn 0.3s ease; }
+
+/* Step dots */
+.step-dots { display: flex; gap: 8px; justify-content: center; margin-bottom: 24px; }
+.step-dot { height: 8px; border-radius: 4px; background: var(--border); transition: width 0.3s, background 0.3s; }
+
+/* Food row */
+.food-row { display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+  background: var(--card); border-radius: 12px; border: 1px solid var(--border);
+  margin-bottom: 7px; box-shadow: 0 1px 4px rgba(30,60,120,0.05); animation: fadeIn 0.25s ease; }
+
+/* Ring */
+#ring-svg { transform: rotate(-90deg); }
+#ring-filled { transition: stroke-dashoffset 0.7s cubic-bezier(.4,0,.2,1), stroke 0.3s; }
+
+/* Quick add strip */
+.quick-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.quick-strip::-webkit-scrollbar { display: none; }
+
+/* Firebase setup screen */
+#firebase-setup { position: fixed; inset: 0; background: var(--bg); z-index: 300;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 24px; }
+</style>
+</head>
+<body>
+
+<!-- Sync indicator -->
+<div id="sync-badge">🔄 מסנכרן...</div>
+
+<!-- ════════════════════════════════════════════════
+     MAIN APP
+════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- SETUP SCREEN -->
+  <div id="screen-setup" class="screen active" style="padding:20px; min-height:100vh; background:linear-gradient(160deg,#eef6ff 0%,#fff 50%,#f0fbf5 100%); display:flex; flex-direction:column; align-items:center; justify-content:center;">
+    <div style="width:100%; max-width:400px;">
+      <div style="text-align:center; margin-bottom:28px;">
+        <div style="font-size:52px; margin-bottom:8px;">🥗</div>
+        <h1 style="font-size:26px; font-weight:800; color:var(--text);">מעקב קלוריות</h1>
+        <div style="color:var(--muted); font-size:14px; margin-top:4px;">מאגר מאכלים ישראלי</div>
+      </div>
+      <div class="card" style="padding:24px;">
+        <div class="step-dots">
+          <div class="step-dot" id="dot1" style="width:32px; background:var(--accent);"></div>
+          <div class="step-dot" id="dot2" style="width:8px;"></div>
+        </div>
+        <!-- Step 1 -->
+        <div id="setup-step1">
+          <h2 style="font-size:16px; font-weight:700; margin-bottom:18px;">פרטים אישיים</h2>
+          <label class="lbl">שם</label>
+          <input class="input" id="s-name" placeholder="שמך" value="אביחי" style="margin-bottom:14px;">
+          <label class="lbl">מגדר</label>
+          <div style="display:flex; gap:8px; margin-bottom:14px;">
+            <button class="btn btn-sm" id="btn-male" onclick="selectGender('male')" style="flex:1; background:linear-gradient(135deg,#2563eb,#1d4ed8);">זכר 👨</button>
+            <button class="btn btn-sm btn-ghost" id="btn-female" onclick="selectGender('female')" style="flex:1;">נקבה 👩</button>
+          </div>
+          <div style="display:flex; gap:10px; margin-bottom:14px;">
+            <div style="flex:1;"><label class="lbl">גיל</label><input class="input" id="s-age" type="number" placeholder="34" value="34" inputmode="numeric"></div>
+            <div style="flex:1;"><label class="lbl">גובה (ס"מ)</label><input class="input" id="s-height" type="number" placeholder="174" value="174" inputmode="numeric"></div>
+            <div style="flex:1;"><label class="lbl">משקל (ק"ג)</label><input class="input" id="s-weight" type="number" placeholder="79" value="79" inputmode="numeric"></div>
+          </div>
+          <label class="lbl">רמת פעילות</label>
+          <select class="input" id="s-activity" style="margin-bottom:20px;">
+            <option value="sedentary">יושבני (ללא ספורט)</option>
+            <option value="light">פעיל מעט (1-2×/שבוע)</option>
+            <option value="moderate" selected>פעיל בינוני (3-4×/שבוע)</option>
+            <option value="active">פעיל מאוד (5-6×/שבוע)</option>
+            <option value="extreme">ספורטאי מקצועי</option>
+          </select>
+          <button class="btn btn-w" onclick="setupNext()">המשך ←</button>
+        </div>
+        <!-- Step 2 -->
+        <div id="setup-step2" style="display:none;">
+          <h2 style="font-size:16px; font-weight:700; margin-bottom:6px;">מה המטרה שלך?</h2>
+          <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">המטרה תשפיע על יעד הקלוריות היומי</p>
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+            <button class="btn btn-sm" id="goal-lose" onclick="selectGoal('lose')" style="justify-content:flex-start; gap:10px;">📉 ירידה במשקל</button>
+            <button class="btn btn-sm btn-ghost" id="goal-maintain" onclick="selectGoal('maintain')" style="justify-content:flex-start; gap:10px;">⚖️ שמירה על המשקל</button>
+            <button class="btn btn-sm btn-ghost" id="goal-gain" onclick="selectGoal('gain')" style="justify-content:flex-start; gap:10px;">📈 עלייה במסה</button>
+          </div>
+          <div id="loss-rates" style="background:var(--card2); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:14px;">
+            <div style="font-size:13px; font-weight:700; margin-bottom:10px;">🎯 קצב ירידה רצוי</div>
+            <div style="display:flex; flex-direction:column; gap:7px;" id="rate-list"></div>
+          </div>
+          <div id="setup-preview" style="text-align:center; padding:12px; background:var(--accent-light); border-radius:12px; margin-bottom:16px; display:none;">
+            <div style="font-size:28px; font-weight:800; color:var(--accent);" id="preview-cal">-</div>
+            <div style="font-size:12px; color:var(--muted);">קלוריות יומיות מומלצות</div>
+            <div style="font-size:11px; color:var(--warning); margin-top:4px;" id="preview-note"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-ghost btn-sm" onclick="setupBack()" style="flex:1;">← חזור</button>
+            <button class="btn btn-sm" onclick="setupComplete()" style="flex:2;">התחל לעקוב! 🚀</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD SCREEN -->
+  <div id="screen-dashboard" class="screen">
+    <!-- Header -->
+    <div style="padding:20px 20px 0; display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+      <div>
+        <div style="font-size:12px; color:var(--muted);" id="dash-date"></div>
+        <h2 style="font-size:20px; font-weight:800;" id="dash-greet"></h2>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button onclick="showScreen('history')" style="background:var(--blue-light); border:none; border-radius:10px; width:38px; height:38px; cursor:pointer; font-size:16px;">📅</button>
+        <button onclick="showScreen('settings')" style="background:var(--card2); border:1px solid var(--border); border-radius:10px; width:38px; height:38px; cursor:pointer; font-size:16px;">⚙️</button>
+      </div>
+    </div>
+
+    <!-- Ring card -->
+    <div style="padding:16px 20px 0;">
+      <div class="card" style="text-align:center; padding:24px 20px; background:#fff;">
+        <div style="display:flex; justify-content:center; margin-bottom:16px;">
+          <div style="position:relative; width:182px; height:182px;">
+            <svg id="ring-svg" width="182" height="182" style="transform:rotate(-90deg);">
+              <circle cx="91" cy="91" r="78" fill="none" stroke="#e8f0fb" stroke-width="13"/>
+              <circle id="ring-filled" cx="91" cy="91" r="78" fill="none" stroke="#16a34a" stroke-width="13"
+                stroke-linecap="round" stroke-dasharray="490" stroke-dashoffset="490"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+              <div style="font-size:34px; font-weight:800; line-height:1; letter-spacing:-1px;" id="ring-number">0</div>
+              <div style="font-size:11px; color:var(--muted); margin-top:4px;" id="ring-label">קל׳ נותרו</div>
+              <div style="font-size:10px; color:var(--dim); margin-top:2px;" id="ring-sub"></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-bottom:12px;">
+          <div style="flex:1; text-align:center; padding:10px 4px; background:var(--accent-light); border-radius:10px;">
+            <div style="font-size:18px; font-weight:800; color:var(--accent);" id="stat-consumed">0</div>
+            <div style="font-size:10px; color:var(--accent); opacity:.7; font-weight:600; margin-top:2px;">נצרכו</div>
+          </div>
+          <div style="flex:1; text-align:center; padding:10px 4px; background:var(--blue-light); border-radius:10px;">
+            <div style="font-size:18px; font-weight:800; color:var(--blue);" id="stat-target">0</div>
+            <div style="font-size:10px; color:var(--blue); opacity:.7; font-weight:600; margin-top:2px;">יעד</div>
+          </div>
+          <div style="flex:1; text-align:center; padding:10px 4px; border-radius:10px;" id="stat-remaining-box">
+            <div style="font-size:18px; font-weight:800;" id="stat-remaining">0</div>
+            <div style="font-size:10px; opacity:.7; font-weight:600; margin-top:2px;">נותרו</div>
+          </div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-bar" id="progress-bar" style="width:0%; background:linear-gradient(90deg,var(--accent),#4ade80);"></div>
+        </div>
+        <div style="font-size:11px; color:var(--muted); margin-top:5px;" id="pct-label">0% מהיעד</div>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div style="padding:10px 20px 0;">
+      <div style="display:flex; gap:8px;">
+        <div style="flex:1; background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:8px 10px; text-align:center;">
+          <div style="font-size:12px; font-weight:700;" id="info-bmr">-</div>
+          <div style="font-size:10px; color:var(--dim); margin-top:1px;">BMR</div>
+        </div>
+        <div style="flex:1; background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:8px 10px; text-align:center;">
+          <div style="font-size:12px; font-weight:700;" id="info-tdee">-</div>
+          <div style="font-size:10px; color:var(--dim); margin-top:1px;">TDEE</div>
+        </div>
+        <div style="flex:1; background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:8px 10px; text-align:center;">
+          <div style="font-size:11px; font-weight:700; color:var(--warning);" id="info-rate">-</div>
+          <div style="font-size:10px; color:var(--dim); margin-top:1px;">קצב ירידה</div>
+        </div>
+      </div>
+      <div id="deficit-banner" style="margin-top:8px; padding:8px 12px; background:rgba(217,119,6,0.08); border:1px solid rgba(217,119,6,0.25); border-radius:10px; display:none; justify-content:space-between; align-items:center;">
+        <span style="font-size:12px; color:var(--warning);">📉 גירעון יומי: <strong id="deficit-val">550</strong> קל'</span>
+        <span style="font-size:11px; color:var(--muted);" id="days-per-kg">~14 יום לק"ג</span>
+      </div>
+    </div>
+
+    <!-- Quick add -->
+    <div id="quick-add-section" style="padding:14px 20px 0; display:none;">
+      <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:8px;">⭐ הוספה מהירה <span style="font-size:11px; font-weight:400;">· לחץ להוסיף</span></div>
+      <div class="quick-strip" id="quick-strip"></div>
+    </div>
+
+    <!-- Today's foods -->
+    <div style="padding:16px 20px 0;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <span style="font-size:15px; font-weight:700;">ארוחות היום <span style="font-size:12px; color:var(--muted); font-weight:400;" id="entry-count">(0)</span></span>
+      </div>
+      <div id="food-list"></div>
+      <div id="empty-state" style="text-align:center; padding:32px; color:var(--muted);">
+        <div style="font-size:40px; margin-bottom:8px;">🍽️</div>
+        <div style="font-size:14px;">לא הוזנו מאכלים עדיין</div>
+        <div style="font-size:12px; margin-top:4px;">לחץ + להוסיף ארוחה ראשונה</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY SCREEN -->
+  <div id="screen-history" class="screen">
+    <div style="display:flex; align-items:center; gap:12px; padding:20px 20px 0; margin-bottom:18px;">
+      <button onclick="showScreen('dashboard')" style="background:transparent; border:1px solid var(--border); border-radius:10px; width:36px; height:36px; cursor:pointer; font-size:16px;">→</button>
+      <h2 style="font-size:18px; font-weight:700;">היסטוריה שבועית</h2>
+    </div>
+    <div style="padding:0 20px;">
+      <div style="display:flex; gap:10px; margin-bottom:18px;">
+        <div class="card" style="flex:1; text-align:center; padding:14px;">
+          <div style="font-size:22px; font-weight:800; color:var(--accent);" id="hist-avg">-</div>
+          <div style="font-size:11px; color:var(--muted); margin-top:3px;">ממוצע יומי</div>
+        </div>
+        <div class="card" style="flex:1; text-align:center; padding:14px;">
+          <div style="font-size:22px; font-weight:800; color:var(--blue);" id="hist-ontarget">-</div>
+          <div style="font-size:11px; color:var(--muted); margin-top:3px;">ימים ביעד</div>
+        </div>
+      </div>
+      <!-- Simple bar chart -->
+      <div class="card" style="padding:16px; margin-bottom:18px;">
+        <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:12px;">7 ימים אחרונים</div>
+        <div id="bar-chart" style="display:flex; align-items:flex-end; gap:6px; height:120px; direction:ltr;"></div>
+        <div id="bar-labels" style="display:flex; gap:6px; margin-top:6px; direction:ltr;"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <span style="font-size:14px; font-weight:700; color:var(--muted);">יומן מפורט</span>
+        <button class="btn btn-sm btn-blue" onclick="exportCSV()">📥 ייצא Excel</button>
+      </div>
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS SCREEN -->
+  <div id="screen-settings" class="screen">
+    <div style="display:flex; align-items:center; gap:12px; padding:20px 20px 0; margin-bottom:18px;">
+      <button onclick="showScreen('dashboard')" style="background:transparent; border:1px solid var(--border); border-radius:10px; width:36px; height:36px; cursor:pointer; font-size:16px;">→</button>
+      <h2 style="font-size:18px; font-weight:700;">הגדרות פרופיל</h2>
+    </div>
+    <div style="padding:0 20px;">
+      <div class="card" style="margin-bottom:14px;">
+        <label class="lbl">שם</label>
+        <input class="input" id="set-name" style="margin-bottom:12px;">
+        <div style="display:flex; gap:10px; margin-bottom:12px;">
+          <div style="flex:1;"><label class="lbl">גיל</label><input class="input" id="set-age" type="number" inputmode="numeric"></div>
+          <div style="flex:1;"><label class="lbl">גובה (ס"מ)</label><input class="input" id="set-height" type="number" inputmode="numeric"></div>
+          <div style="flex:1;"><label class="lbl">משקל (ק"ג)</label><input class="input" id="set-weight" type="number" inputmode="numeric"></div>
+        </div>
+        <label class="lbl">רמת פעילות</label>
+        <select class="input" id="set-activity" style="margin-bottom:12px;">
+          <option value="sedentary">יושבני</option>
+          <option value="light">פעיל מעט</option>
+          <option value="moderate">פעיל בינוני</option>
+          <option value="active">פעיל מאוד</option>
+          <option value="extreme">ספורטאי מקצועי</option>
+        </select>
+        <label class="lbl">מטרה</label>
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <button class="btn btn-sm" id="set-goal-lose" onclick="setGoalBtn('lose')" style="flex:1; font-size:12px;">📉 ירידה</button>
+          <button class="btn btn-sm btn-ghost" id="set-goal-maintain" onclick="setGoalBtn('maintain')" style="flex:1; font-size:12px;">⚖️ שמירה</button>
+          <button class="btn btn-sm btn-ghost" id="set-goal-gain" onclick="setGoalBtn('gain')" style="flex:1; font-size:12px;">📈 עלייה</button>
+        </div>
+        <div id="set-lossrate-section" style="margin-bottom:12px; display:none;">
+          <label class="lbl">קצב ירידה</label>
+          <div id="set-rate-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
+        <div style="text-align:center; padding:10px; background:var(--accent-light); border-radius:10px; margin-bottom:14px;">
+          <div style="font-size:11px; color:var(--muted);">יעד קלוריות חדש</div>
+          <div style="font-size:24px; font-weight:800; color:var(--accent);" id="set-preview">-</div>
+          <div style="font-size:10px; color:var(--dim);">קלוריות ליום</div>
+        </div>
+        <button class="btn btn-w" onclick="saveSettings()">שמור שינויים</button>
+      </div>
+      <!-- Firebase setup -->
+      <div class="card" style="margin-bottom:14px; border-color:rgba(37,99,235,0.3);">
+        <div style="font-size:14px; font-weight:700; margin-bottom:8px;">🔥 סנכרון בין מכשירים (Firebase)</div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:10px;" id="firebase-status">לא מוגדר — נתונים נשמרים מקומית בלבד</div>
+        <button class="btn btn-sm btn-blue btn-w" onclick="showFirebaseSetup()">הגדר סנכרון</button>
+      </div>
+      <button onclick="resetApp()" style="width:100%; padding:12px; border-radius:12px; border:1px solid var(--danger); background:transparent; color:var(--danger); cursor:pointer; font-size:13px; font-family:inherit; font-weight:600;">⚠ איפוס האפליקציה</button>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- FAB -->
+<button class="fab" id="fab-btn" onclick="openModal('add')" style="display:none;">+ הוסף מאכל</button>
+
+<!-- ════════════════════════════════════════════
+     ADD FOOD MODAL
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal-box">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+      <h3 style="font-size:18px; font-weight:700;" id="modal-title">הוסף מאכל</h3>
+      <button onclick="closeModal()" style="background:var(--card2); border:1px solid var(--border); border-radius:10px; width:32px; height:32px; cursor:pointer; font-size:16px;">✕</button>
+    </div>
+    <!-- Always-mounted file input -->
+    <input id="img-input" type="file" accept="image/*" style="display:none"
+      onchange="handleImageFile(this)">
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab" id="tab-pantry" onclick="setTab('pantry')">⭐ מחסן</button>
+      <button class="tab" id="tab-text"   onclick="setTab('text')">🔍 חיפוש</button>
+      <button class="tab" id="tab-image"  onclick="setTab('image')">📷 תמונה</button>
+      <button class="tab" id="tab-barcode" onclick="setTab('barcode')">🔲 ברקוד</button>
+    </div>
+
+    <!-- PANTRY TAB -->
+    <div id="tab-content-pantry">
+      <div id="pantry-empty" style="text-align:center; padding:28px 16px; color:var(--muted); display:none;">
+        <div style="font-size:40px; margin-bottom:8px;">⭐</div>
+        <div style="font-size:15px; font-weight:600; margin-bottom:6px;">המחסן ריק</div>
+        <div style="font-size:13px;">מאכלים שתוסיף יישמרו כאן</div>
+        <button class="btn btn-sm btn-blue" style="margin-top:14px;" onclick="setTab('text')">🔍 חפש מאכל ראשון</button>
+      </div>
+      <div id="pantry-list"></div>
+    </div>
+
+    <!-- TEXT SEARCH TAB -->
+    <div id="tab-content-text" style="display:none;">
+      <input class="input" id="search-input" placeholder="חפש מאכל (עברית)..." oninput="searchFoods(this.value)" autocomplete="off">
+      <div id="search-results" style="margin-top:8px;"></div>
+      <div id="manual-entry" style="display:none; margin-top:12px; padding:14px; background:var(--card2); border-radius:12px; border:1px solid var(--border);">
+        <div style="font-size:13px; color:var(--muted); margin-bottom:10px;">לא נמצא — הזן ידנית:</div>
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+          <div style="flex:2;"><label class="lbl">שם המאכל</label><input class="input" id="manual-name" style="font-size:13px;"></div>
+          <div style="flex:1;"><label class="lbl">קל'/100ג'</label><input class="input" id="manual-cal" type="number" inputmode="numeric" style="font-size:13px;"></div>
+        </div>
+        <button class="btn btn-sm btn-w" onclick="addManual()">הוסף ידנית</button>
+      </div>
+      <div id="selected-food" style="display:none; margin-top:14px; padding:16px; background:var(--accent-light); border-radius:14px; border:1.5px solid var(--accent-dim);">
+        <div style="font-size:15px; font-weight:700; color:var(--accent); margin-bottom:10px;" id="selected-name"></div>
+        <div style="display:flex; gap:10px; align-items:flex-end;">
+          <div style="flex:1;">
+            <label class="lbl">משקל (גרמים)</label>
+            <input class="input" id="food-grams" type="number" value="100" inputmode="numeric" oninput="updateCalPreview()">
+          </div>
+          <div style="text-align:center; min-width:80px; background:#fff; border-radius:10px; padding:8px 10px; border:1px solid var(--border);">
+            <div style="font-size:22px; font-weight:800; color:var(--accent);" id="cal-preview">0</div>
+            <div style="font-size:11px; color:var(--muted);">קלוריות</div>
+          </div>
+        </div>
+        <button class="btn btn-w" style="margin-top:12px;" onclick="confirmAddFood()">הוסף לרשימה</button>
+      </div>
+    </div>
+
+    <!-- IMAGE TAB -->
+    <div id="tab-content-image" style="display:none;">
+      <label for="img-input" id="img-drop-zone"
+        style="border:2px dashed var(--border); border-radius:16px; padding:36px 20px;
+               text-align:center; margin-bottom:14px; cursor:pointer; background:var(--card2); display:block;">
+        <div style="font-size:48px; margin-bottom:10px;">📷</div>
+        <div style="font-size:15px; font-weight:700; margin-bottom:4px;">לחץ לצילום או בחירת תמונה</div>
+        <div style="font-size:12px; color:var(--muted);">מצלמה · גלריה · JPEG / PNG</div>
+      </label>
+      <label for="img-input" class="btn btn-teal btn-w" style="margin-bottom:6px; cursor:pointer;">
+        📷 צלם / בחר תמונה
+      </label>
+      <div style="font-size:11px; color:var(--muted); text-align:center; margin-bottom:14px;">המכשיר יציג תפריט: מצלמה או גלריה</div>
+      <div id="img-analyzing" style="display:none; text-align:center; padding:28px; background:var(--card2); border-radius:14px;">
+        <div style="font-size:36px; margin-bottom:8px; animation:pulse 1.2s ease-in-out infinite;">🔍</div>
+        <div style="font-weight:600; margin-bottom:4px;">מנתח תמונה...</div>
+        <div style="font-size:12px; color:var(--muted);">בינה מלאכותית מזהה את המאכל</div>
+      </div>
+      <div id="img-error" style="display:none; color:var(--danger); padding:12px 14px; background:var(--danger-light); border-radius:10px; font-size:13px;"></div>
+      <div id="img-result" style="display:none; padding:16px; background:var(--teal-light); border-radius:14px; border:1.5px solid var(--teal);">
+        <div style="font-size:16px; font-weight:700; color:var(--teal); margin-bottom:4px;" id="img-food-name"></div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:10px;" id="img-notes"></div>
+        <div style="display:flex; gap:10px; align-items:flex-end; margin-bottom:12px;">
+          <div style="flex:1;"><label class="lbl">משקל (גרמים)</label>
+            <input class="input" id="img-grams" type="number" inputmode="numeric" oninput="updateImgCalPreview()">
+          </div>
+          <div style="text-align:center; min-width:80px; background:#fff; border-radius:10px; padding:8px 10px; border:1px solid var(--border);">
+            <div style="font-size:22px; font-weight:800; color:var(--teal);" id="img-cal-preview">0</div>
+            <div style="font-size:11px; color:var(--muted);">קלוריות</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-sm btn-ghost" onclick="resetImg()">נסה שוב</button>
+          <button class="btn btn-sm btn-teal" style="flex:2;" onclick="addImgFood()">הוסף לרשימה</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BARCODE TAB -->
+    <div id="tab-content-barcode" style="display:none;">
+      <div style="display:flex; gap:8px; margin-bottom:10px;">
+        <input class="input" id="barcode-input" placeholder="הזן מספר ברקוד..." inputmode="numeric"
+          style="flex:1;" onkeydown="if(event.key==='Enter') lookupBarcode(this.value)">
+        <button class="btn btn-sm" onclick="lookupBarcode(document.getElementById('barcode-input').value)">חפש</button>
+      </div>
+      <button class="btn btn-purple btn-w" style="margin-bottom:10px;" id="scan-btn" onclick="toggleScan()">📷 סרוק ברקוד עם מצלמה</button>
+      <div id="video-container" style="display:none; border-radius:14px; overflow:hidden; margin-bottom:12px; border:2px solid var(--purple);">
+        <video id="barcode-video" style="width:100%; display:block; max-height:240px; object-fit:cover;" muted playsinline autoplay></video>
+        <div style="padding:8px 12px; background:rgba(0,0,0,0.5); color:#fff; font-size:12px; text-align:center;">📡 מחפש ברקוד...</div>
+      </div>
+      <div id="no-barcode-detector" style="display:none; font-size:12px; color:var(--warning); background:var(--warning-light); border-radius:10px; padding:10px 12px; margin-bottom:10px;">
+        💡 זיהוי אוטומטי זמין ב-Chrome בלבד. הזן את מספר הברקוד ידנית.
+      </div>
+      <div id="barcode-loading" style="display:none; text-align:center; padding:20px; background:var(--card2); border-radius:12px;">
+        <div style="font-size:28px; margin-bottom:6px; animation:pulse 1.2s ease-in-out infinite;">🔍</div>
+        <div>מחפש מוצר...</div>
+      </div>
+      <div id="barcode-error" style="display:none; color:var(--danger); font-size:13px; padding:10px 14px; background:var(--danger-light); border-radius:10px; margin-bottom:10px;"></div>
+      <div id="barcode-result" style="display:none; padding:16px; background:var(--purple-light); border-radius:14px; border:1.5px solid var(--purple);">
+        <div style="font-size:15px; font-weight:700; color:var(--purple); margin-bottom:10px;" id="barcode-product-name"></div>
+        <div style="display:flex; gap:10px; align-items:flex-end; margin-bottom:12px;">
+          <div style="flex:1;"><label class="lbl">משקל (גרמים)</label>
+            <input class="input" id="barcode-grams" type="number" value="100" inputmode="numeric" oninput="updateBarcodeCalPreview()">
+          </div>
+          <div style="text-align:center; min-width:80px; background:#fff; border-radius:10px; padding:8px 10px; border:1px solid var(--border);">
+            <div style="font-size:22px; font-weight:800; color:var(--purple);" id="barcode-cal-preview">0</div>
+            <div style="font-size:11px; color:var(--muted);">קלוריות</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-sm btn-ghost" onclick="resetBarcode()">ברקוד חדש</button>
+          <button class="btn btn-sm btn-purple" style="flex:2;" onclick="addBarcodeFood()">הוסף לרשימה</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal-box">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+      <h3 style="font-size:18px; font-weight:700;">ערוך מאכל</h3>
+      <button onclick="closeModal()" style="background:var(--card2); border:1px solid var(--border); border-radius:10px; width:32px; height:32px; cursor:pointer; font-size:16px;">✕</button>
+    </div>
+    <input type="hidden" id="edit-id">
+    <label class="lbl">שם</label>
+    <input class="input" id="edit-name" style="margin-bottom:12px;">
+    <label class="lbl">משקל (גרמים)</label>
+    <input class="input" id="edit-grams" type="number" inputmode="numeric" style="margin-bottom:6px;" oninput="updateEditPreview()">
+    <div style="font-size:13px; color:var(--muted); margin-bottom:16px;">סה"כ: <strong style="color:var(--accent);" id="edit-cal-preview">0</strong> קלוריות</div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="closeModal()">ביטול</button>
+      <button class="btn btn-sm" style="flex:1;" onclick="saveEdit()">שמור</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIREBASE SETUP MODAL -->
+<div class="modal-overlay" id="modal-firebase">
+  <div class="modal-box">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 style="font-size:17px; font-weight:700;">🔥 הגדרת Firebase</h3>
+      <button onclick="closeModal()" style="background:var(--card2); border:1px solid var(--border); border-radius:10px; width:32px; height:32px; cursor:pointer;">✕</button>
+    </div>
+    <div style="font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.6;">
+      Firebase מאפשר סנכרון בזמן אמת בין נייד, טאבלט ומחשב.<br>
+      <strong style="color:var(--text);">3 דקות הגדרה חד-פעמית:</strong>
+    </div>
+    <div style="background:var(--card2); border-radius:12px; padding:14px; margin-bottom:14px; font-size:13px; line-height:1.8;">
+      1. כנס ל- <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue); font-weight:600;">console.firebase.google.com</a><br>
+      2. "צור פרויקט" → תן שם → המשך<br>
+      3. לחץ על ⚙️ Project Settings → "Your apps" → Web<br>
+      4. רשום שם → "Register" → העתק את ה-<code style="background:#eee; padding:1px 4px; border-radius:4px;">firebaseConfig</code><br>
+      5. בתפריט שמאל: Build → Realtime Database → "Create" → Start in test mode
+    </div>
+    <label class="lbl">הדבק כאן את ה-firebaseConfig (JSON):</label>
+    <textarea id="firebase-config-input" class="input" rows="6"
+      placeholder='{"apiKey":"...","authDomain":"...","databaseURL":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'
+      style="font-size:12px; font-family:monospace; resize:vertical; margin-bottom:12px;"></textarea>
+    <button class="btn btn-w" style="background:linear-gradient(135deg,#f97316,#ea580c);" onclick="saveFirebaseConfig()">🔥 הפעל סנכרון</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+"use strict";
+
+// ══════════════════════════════════════════
+// FOOD DATABASE
+// ══════════════════════════════════════════
+const FOODS = [
+  {id:1,name:"חומוס",cal:166,cat:"ממרחים"},{id:2,name:"חומוס עם טחינה",cal:185,cat:"ממרחים"},
+  {id:3,name:"טחינה",cal:595,cat:"ממרחים"},{id:4,name:"בבגנוש",cal:85,cat:"ממרחים"},
+  {id:5,name:"ממרח אבוקדו",cal:155,cat:"ממרחים"},{id:6,name:"סלט ישראלי",cal:45,cat:"סלטים"},
+  {id:7,name:"סלט ירוק",cal:75,cat:"סלטים"},{id:8,name:"סלט כרוב",cal:60,cat:"סלטים"},
+  {id:9,name:"סלט חצילים",cal:95,cat:"סלטים"},{id:10,name:"סלט אורז",cal:130,cat:"סלטים"},
+  {id:11,name:"פלאפל",cal:225,cat:"אוכל רחוב"},{id:12,name:"שוורמה עוף",cal:175,cat:"אוכל רחוב"},
+  {id:13,name:"שוורמה טלה",cal:210,cat:"אוכל רחוב"},{id:14,name:"שקשוקה",cal:120,cat:"אוכל רחוב"},
+  {id:15,name:"סביח",cal:175,cat:"אוכל רחוב"},{id:16,name:"בורקס גבינה",cal:320,cat:"אוכל רחוב"},
+  {id:17,name:'בורקס תפו"א',cal:280,cat:"אוכל רחוב"},{id:18,name:"קובה",cal:195,cat:"אוכל רחוב"},
+  {id:19,name:"מלאווח",cal:355,cat:"אוכל רחוב"},{id:20,name:"ג'חנון",cal:290,cat:"אוכל רחוב"},
+  {id:21,name:"פיתה",cal:265,cat:"לחם ודגנים"},{id:22,name:"לחם אחיד",cal:220,cat:"לחם ודגנים"},
+  {id:23,name:"לחם לבן",cal:265,cat:"לחם ודגנים"},{id:24,name:"לחם שיפון",cal:259,cat:"לחם ודגנים"},
+  {id:25,name:"לחמנייה",cal:280,cat:"לחם ודגנים"},{id:26,name:"קרואסון",cal:406,cat:"לחם ודגנים"},
+  {id:27,name:"לחם כוסמין",cal:248,cat:"לחם ודגנים"},{id:28,name:"אורז לבן מבושל",cal:130,cat:"לחם ודגנים"},
+  {id:29,name:"אורז מלא מבושל",cal:112,cat:"לחם ודגנים"},{id:30,name:"פסטה מבושלת",cal:131,cat:"לחם ודגנים"},
+  {id:31,name:"קוסקוס מבושל",cal:112,cat:"לחם ודגנים"},{id:32,name:"בולגור מבושל",cal:83,cat:"לחם ודגנים"},
+  {id:33,name:"קינואה מבושלת",cal:120,cat:"לחם ודגנים"},
+  {id:34,name:"גבינה לבנה 5%",cal:97,cat:"חלב וגבינות"},{id:35,name:"גבינה לבנה 9%",cal:122,cat:"חלב וגבינות"},
+  {id:36,name:"קוטג' 5%",cal:98,cat:"חלב וגבינות"},{id:37,name:"גבינה צהובה 28%",cal:350,cat:"חלב וגבינות"},
+  {id:38,name:"גבינה בולגרית",cal:248,cat:"חלב וגבינות"},{id:39,name:"גבינת פטה",cal:264,cat:"חלב וגבינות"},
+  {id:40,name:"יוגורט 3%",cal:61,cat:"חלב וגבינות"},{id:41,name:"יוגורט 0%",cal:38,cat:"חלב וגבינות"},
+  {id:42,name:"לבן 3%",cal:60,cat:"חלב וגבינות"},{id:43,name:"חלב 3%",cal:61,cat:"חלב וגבינות"},
+  {id:44,name:"שמנת חמוצה",cal:193,cat:"חלב וגבינות"},
+  {id:45,name:"ביצה קשה",cal:155,cat:"ביצים"},{id:46,name:"ביצה מטוגנת",cal:196,cat:"ביצים"},
+  {id:47,name:"חביתה",cal:154,cat:"ביצים"},{id:48,name:"ביצת עין",cal:90,cat:"ביצים"},
+  {id:49,name:"חזה עוף צלוי",cal:165,cat:"בשר ועוף"},{id:50,name:"כרעיים עוף",cal:209,cat:"בשר ועוף"},
+  {id:51,name:"שניצל עוף",cal:250,cat:"בשר ועוף"},{id:52,name:"בשר בקר טחון",cal:250,cat:"בשר ועוף"},
+  {id:53,name:"סטייק אנטריקוט",cal:271,cat:"בשר ועוף"},{id:54,name:"קציצות בשר",cal:235,cat:"בשר ועוף"},
+  {id:55,name:"נקניקיות עוף",cal:223,cat:"בשר ועוף"},{id:56,name:"כבד עוף",cal:172,cat:"בשר ועוף"},
+  {id:57,name:"סלמון בגריל",cal:208,cat:"דגים"},{id:58,name:"טונה במים",cal:116,cat:"דגים"},
+  {id:59,name:"טונה בשמן",cal:200,cat:"דגים"},{id:60,name:"לוקוס בגריל",cal:150,cat:"דגים"},
+  {id:61,name:"פילה דג מטוגן",cal:195,cat:"דגים"},
+  {id:62,name:"עגבנייה",cal:18,cat:"ירקות"},{id:63,name:"מלפפון",cal:15,cat:"ירקות"},
+  {id:64,name:"פלפל אדום",cal:31,cat:"ירקות"},{id:65,name:"בצל",cal:40,cat:"ירקות"},
+  {id:66,name:"גזר",cal:41,cat:"ירקות"},{id:67,name:"חסה",cal:15,cat:"ירקות"},
+  {id:68,name:"חציל",cal:25,cat:"ירקות"},{id:69,name:"ברוקולי",cal:34,cat:"ירקות"},
+  {id:70,name:"תפוח אדמה מבושל",cal:87,cat:"ירקות"},{id:71,name:"בטטה מבושלת",cal:86,cat:"ירקות"},
+  {id:72,name:"אבוקדו",cal:160,cat:"ירקות"},{id:73,name:"תירס",cal:86,cat:"ירקות"},
+  {id:74,name:"בננה",cal:89,cat:"פירות"},{id:75,name:"תפוח",cal:52,cat:"פירות"},
+  {id:76,name:"ענבים",cal:69,cat:"פירות"},{id:77,name:"אבטיח",cal:30,cat:"פירות"},
+  {id:78,name:"מנגו",cal:60,cat:"פירות"},{id:79,name:"תמר",cal:282,cat:"פירות"},
+  {id:80,name:"תפוז",cal:47,cat:"פירות"},{id:81,name:"תות שדה",cal:32,cat:"פירות"},
+  {id:82,name:"עדשים מבושלות",cal:116,cat:"קטניות"},{id:83,name:"שעועית מבושלת",cal:127,cat:"קטניות"},
+  {id:84,name:"חומוס גרגירים",cal:164,cat:"קטניות"},{id:85,name:"אפונה מבושלת",cal:81,cat:"קטניות"},
+  {id:86,name:"במבה",cal:535,cat:"חטיפים"},{id:87,name:"ביסלי",cal:490,cat:"חטיפים"},
+  {id:88,name:"חלבה",cal:469,cat:"חטיפים"},{id:89,name:"שקדים",cal:579,cat:"חטיפים"},
+  {id:90,name:"גרעיני חמנייה",cal:584,cat:"חטיפים"},{id:91,name:"גרנולה",cal:471,cat:"חטיפים"},
+  {id:92,name:"קפה שחור",cal:2,cat:"משקאות"},{id:93,name:"קפה עם חלב",cal:60,cat:"משקאות"},
+  {id:94,name:"אספרסו",cal:5,cat:"משקאות"},{id:95,name:"שוקו חם",cal:80,cat:"משקאות"},
+  {id:96,name:"מיץ תפוזים",cal:45,cat:"משקאות"},{id:97,name:"קולה",cal:42,cat:"משקאות"},
+  {id:98,name:"קולה זירו",cal:0,cat:"משקאות"},{id:99,name:"מים",cal:0,cat:"משקאות"},
+  {id:100,name:"שוקולד חלב",cal:535,cat:"ממתקים"},{id:101,name:"שוקולד מריר",cal:598,cat:"ממתקים"},
+  {id:102,name:"גלידת וניל",cal:207,cat:"ממתקים"},{id:103,name:"עוגת שוקולד",cal:371,cat:"ממתקים"},
+  {id:104,name:"קנאפה",cal:378,cat:"ממתקים"},{id:105,name:"פיצה גבינה (פרוסה)",cal:266,cat:"פסט פוד"},
+  {id:106,name:"המבורגר",cal:295,cat:"פסט פוד"},{id:107,name:"צ'יפס",cal:312,cat:"פסט פוד"},
+  {id:108,name:"שניצל מטוגן",cal:296,cat:"פסט פוד"},
+  {id:109,name:"קורנפלקס",cal:357,cat:"ארוחת בוקר"},{id:110,name:"דייסת שיבולת שועל",cal:71,cat:"ארוחת בוקר"},
+  {id:111,name:"שמן זית",cal:884,cat:"שמנים"},{id:112,name:"חמאה",cal:717,cat:"שמנים"},
+  {id:113,name:"מיונז",cal:680,cat:"שמנים"},{id:114,name:"מיונז קל",cal:340,cat:"שמנים"},
+];
+
+const ACTIVITY = {
+  sedentary:1.2, light:1.375, moderate:1.55, active:1.725, extreme:1.9
+};
+const LOSS_RATES = [
+  {val:0.25, label:'0.25 ק"ג/שבוע', deficit:275},
+  {val:0.5,  label:'0.5 ק"ג/שבוע',  deficit:550},
+  {val:0.75, label:'0.75 ק"ג/שבוע', deficit:825},
+  {val:1,    label:'1 ק"ג/שבוע',    deficit:1100},
+];
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let profile = null;
+let entries = [];
+let history = [];
+let pantry  = [];
+let currentGender = "male";
+let currentGoal   = "lose";
+let currentRate   = 0.5;
+let setCurrentGoal = "lose";
+let setCurrentRate = 0.5;
+let editFoodItem = null;
+let selectedFood = null;
+let imgCal100 = 0;
+let barcodeCal100 = 0;
+let barcodeStream = null;
+let scanningActive = false;
+
+// ══════════════════════════════════════════
+// FIREBASE
+// ══════════════════════════════════════════
+let db = null;
+
+function initFirebase(config) {
+  try {
+    if (firebase.apps.length) firebase.app().delete();
+    firebase.initializeApp(config);
+    db = firebase.database();
+    listenFirebase();
+    document.getElementById('firebase-status').textContent = '✅ מחובר — סנכרון פעיל';
+    return true;
+  } catch(e) { console.error(e); return false; }
+}
+
+function listenFirebase() {
+  if (!db) return;
+  const uid = FIREBASE_USER_ID;
+  db.ref(`${uid}/profile`).on('value', snap => { if(snap.val()) { profile = snap.val(); renderDashboard(); }});
+  db.ref(`${uid}/today`).on('value', snap => {
+    const d = snap.val();
+    if (d && d.date === todayStr()) { entries = d.entries || []; renderDashboard(); }
+    else if (d && d.date !== todayStr()) { archiveDay(d); }
+  });
+  db.ref(`${uid}/history`).on('value', snap => { history = snap.val() ? Object.values(snap.val()) : []; });
+  db.ref(`${uid}/pantry`).on('value', snap => { pantry = snap.val() ? Object.values(snap.val()) : []; renderQuickAdd(); renderPantryTab(); });
+}
+
+async function fbSet(path, val) {
+  if (!db) { localStorage.setItem('ct-'+path.replace(/\//g,'-'), JSON.stringify(val)); return; }
+  showSync();
+  await db.ref(`${FIREBASE_USER_ID}/${path}`).set(val);
+  hideSync();
+}
+
+async function fbGet(path) {
+  if (!db) { try { return JSON.parse(localStorage.getItem('ct-'+path.replace(/\//g,'-'))); } catch{return null;} }
+  const snap = await db.ref(`${FIREBASE_USER_ID}/${path}`).once('value');
+  return snap.val();
+}
+
+function showSync() { document.getElementById('sync-badge').style.display='block'; }
+function hideSync() { setTimeout(()=>{ document.getElementById('sync-badge').style.display='none'; },600); }
+
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function timeNow() { const d=new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function n(v) { return (v||0).toLocaleString('he-IL'); }
+function calcBMR(p) { const b=10*p.weight+6.25*p.height-5*p.age; return p.gender==='male'?b+5:b-161; }
+function calcTDEE(p) { return Math.round(calcBMR(p)*(ACTIVITY[p.activityLevel]||1.55)); }
+function calcTarget(p) {
+  const t=calcTDEE(p);
+  if(p.goal==='lose'){ const r=LOSS_RATES.find(x=>x.val===p.lossRate)||LOSS_RATES[1]; return Math.max(t-r.deficit,1200); }
+  if(p.goal==='gain') return t+500;
+  return t;
+}
+function heDay(s) { return new Date(s+'T12:00:00').toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'}); }
+function shortDay(s) { return new Date(s+'T12:00:00').toLocaleDateString('he-IL',{weekday:'short'}); }
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+async function init() {
+  // Load Firebase config from localStorage if saved
+  const savedFbConfig = localStorage.getItem('ct-firebase-config');
+  if (savedFbConfig) {
+    try { initFirebase(JSON.parse(savedFbConfig)); } catch(e){}
+  }
+
+  profile = await fbGet('profile');
+  if (!profile) {
+    // Auto-create Avichai's profile
+    const seed = { name:'אביחי', gender:'male', age:34, height:174, weight:79, activityLevel:'moderate', goal:'lose', lossRate:0.5 };
+    seed.targetCalories = calcTarget(seed);
+    seed.bmr = Math.round(calcBMR(seed));
+    seed.tdee = calcTDEE(seed);
+    profile = seed;
+    await fbSet('profile', profile);
+  }
+
+  // Load / reset today
+  const todayData = await fbGet('today');
+  const key = todayStr();
+  if (todayData && todayData.date !== key) {
+    await archiveDay(todayData);
+    entries = [];
+    await fbSet('today', {date:key, entries:[]});
+  } else if (todayData?.date === key) {
+    entries = todayData.entries || [];
+  } else {
+    await fbSet('today', {date:key, entries:[]});
+  }
+
+  history = (await fbGet('history')) || [];
+  if (!Array.isArray(history)) history = Object.values(history);
+  pantry  = (await fbGet('pantry'))  || [];
+  if (!Array.isArray(pantry)) pantry = Object.values(pantry);
+
+  showScreen('dashboard');
+  document.getElementById('fab-btn').style.display = '';
+}
+
+async function archiveDay(d) {
+  if (!d || !d.entries?.length) return;
+  const archived = { date:d.date, entries:d.entries, totalCalories:d.entries.reduce((s,e)=>s+e.calories,0), target:profile?.targetCalories||2000 };
+  if (!Array.isArray(history)) history = [];
+  if (!history.find(h=>h.date===d.date)) {
+    history = [...history, archived];
+    await fbSet('history', history);
+  }
+}
+
+// ══════════════════════════════════════════
+// SCREENS
+// ══════════════════════════════════════════
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.getElementById('fab-btn').style.display = name==='dashboard' ? '' : 'none';
+  if (name==='dashboard') renderDashboard();
+  if (name==='history')   renderHistory();
+  if (name==='settings')  renderSettings();
+}
+
+// ══════════════════════════════════════════
+// DASHBOARD RENDER
+// ══════════════════════════════════════════
+function renderDashboard() {
+  if (!profile) return;
+  const target = profile.targetCalories;
+  const consumed = entries.reduce((s,e)=>s+e.calories,0);
+  const remaining = target - consumed;
+  const pct = Math.min(Math.round(consumed/target*100), 100);
+  const over = consumed > target;
+  const warn = !over && consumed > target*0.85;
+  const col  = over ? 'var(--danger)' : warn ? 'var(--warning)' : 'var(--accent)';
+
+  // Header
+  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('dash-greet').textContent = `שלום, ${profile.name} 👋`;
+
+  // Ring
+  const R=78, circ=2*Math.PI*R;
+  const offset = circ * (1 - Math.min(consumed/target,1));
+  document.getElementById('ring-filled').style.strokeDashoffset = offset;
+  document.getElementById('ring-filled').style.stroke = col;
+  document.getElementById('ring-number').textContent = n(Math.abs(remaining));
+  document.getElementById('ring-number').style.color = col;
+  document.getElementById('ring-label').textContent = over ? '⚠ חרגת!' : "קל׳ נותרו";
+  document.getElementById('ring-sub').textContent = `${n(consumed)} / ${n(target)}`;
+
+  // Stats
+  document.getElementById('stat-consumed').textContent = n(consumed);
+  document.getElementById('stat-target').textContent = n(target);
+  document.getElementById('stat-remaining').textContent = n(Math.abs(remaining));
+  document.getElementById('stat-remaining').style.color = over?'var(--danger)':'var(--teal)';
+  const rb = document.getElementById('stat-remaining-box');
+  rb.style.background = over?'var(--danger-light)':'var(--teal-light)';
+  document.querySelector('#stat-remaining-box div:last-child').style.color = over?'var(--danger)':'var(--teal)';
+
+  // Progress
+  const pb = document.getElementById('progress-bar');
+  pb.style.width = pct+'%';
+  pb.style.background = over ? 'linear-gradient(90deg,var(--danger),#f87171)' : warn ? 'linear-gradient(90deg,var(--warning),#fcd34d)' : 'linear-gradient(90deg,var(--accent),#4ade80)';
+  document.getElementById('pct-label').textContent = `${Math.round(consumed/target*100)}% מהיעד`;
+
+  // Info row
+  document.getElementById('info-bmr').textContent = `${n(profile.bmr)} קל׳`;
+  document.getElementById('info-tdee').textContent = `${n(profile.tdee)} קל׳`;
+  const rateObj = LOSS_RATES.find(r=>r.val===profile.lossRate) || LOSS_RATES[1];
+  const db2 = document.getElementById('deficit-banner');
+  if (profile.goal==='lose') {
+    document.getElementById('info-rate').textContent = rateObj.label;
+    db2.style.display='flex';
+    document.getElementById('deficit-val').textContent = rateObj.deficit;
+    document.getElementById('days-per-kg').textContent = `~${Math.round(7700/rateObj.deficit)} יום לק"ג`;
+  } else {
+    document.getElementById('info-rate').textContent = profile.goal==='gain'?'עלייה במסה':'שמירה';
+    db2.style.display='none';
+  }
+
+  // Food list
+  renderFoodList();
+  renderQuickAdd();
+}
+
+function renderFoodList() {
+  const list = document.getElementById('food-list');
+  const empty = document.getElementById('empty-state');
+  const ec = document.getElementById('entry-count');
+  ec.textContent = `(${entries.length})`;
+  if (!entries.length) { list.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  list.innerHTML = entries.map(item=>`
+    <div class="food-row" id="row-${item.id}">
+      <div style="width:36px;height:36px;border-radius:10px;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🍽</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:600;">${item.name}</div>
+        <div style="font-size:11px;color:var(--muted);">${item.grams}ג׳ · ${item.time}</div>
+      </div>
+      <div style="font-size:15px;font-weight:800;color:var(--accent);background:var(--accent-light);border-radius:8px;padding:4px 9px;flex-shrink:0;">
+        ${item.calories}<span style="font-size:9px;font-weight:400;"> קל׳</span>
+      </div>
+      <button onclick="openEdit('${item.id}')" style="background:var(--blue-light);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;color:var(--blue);font-size:13px;flex-shrink:0;">✏</button>
+      <button onclick="deleteEntry('${item.id}',this)" style="background:var(--card2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;cursor:pointer;color:var(--muted);font-size:13px;flex-shrink:0;" data-confirm="0">✕</button>
+    </div>`).join('');
+}
+
+function renderQuickAdd() {
+  const sec = document.getElementById('quick-add-section');
+  const strip = document.getElementById('quick-strip');
+  if (!pantry.length) { sec.style.display='none'; return; }
+  sec.style.display='block';
+  strip.innerHTML = pantry.slice(0,10).map(item=>`
+    <button class="chip" onclick="quickAdd('${item.id}')" id="chip-${item.id}">
+      <span style="font-size:13px;font-weight:700;">${item.name}</span>
+      <span style="font-size:10px;color:var(--muted);">${item.calories}קל׳</span>
+    </button>`).join('');
+}
+
+// ══════════════════════════════════════════
+// FOOD ACTIONS
+// ══════════════════════════════════════════
+async function addEntry(name, cal100, grams, calories) {
+  const item = { id:uid(), name, cal100:cal100||0, grams:grams||100, calories:calories||Math.round(cal100*grams/100), time:timeNow() };
+  entries = [...entries, item];
+  await fbSet('today', {date:todayStr(), entries});
+  await saveToPantry(item);
+  renderDashboard();
+  return item;
+}
+
+async function deleteEntry(id, btn) {
+  if (btn.dataset.confirm === '0') {
+    btn.style.background='var(--danger-light)'; btn.style.color='var(--danger)'; btn.textContent='✓';
+    btn.dataset.confirm='1';
+    setTimeout(()=>{ btn.style.background='var(--card2)'; btn.style.color='var(--muted)'; btn.textContent='✕'; btn.dataset.confirm='0'; },2000);
+    return;
+  }
+  entries = entries.filter(e=>e.id!==id);
+  await fbSet('today', {date:todayStr(), entries});
+  renderDashboard();
+}
+
+function openEdit(id) {
+  editFoodItem = entries.find(e=>e.id===id);
+  if (!editFoodItem) return;
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-name').value = editFoodItem.name;
+  document.getElementById('edit-grams').value = editFoodItem.grams;
+  updateEditPreview();
+  openModal('edit');
+}
+
+function updateEditPreview() {
+  if (!editFoodItem) return;
+  const g = Number(document.getElementById('edit-grams').value)||100;
+  document.getElementById('edit-cal-preview').textContent = Math.round((editFoodItem.cal100||editFoodItem.calories)*g/100);
+}
+
+async function saveEdit() {
+  const id = document.getElementById('edit-id').value;
+  const name = document.getElementById('edit-name').value;
+  const grams = Number(document.getElementById('edit-grams').value)||100;
+  const calories = Math.round((editFoodItem.cal100||editFoodItem.calories)*grams/100);
+  entries = entries.map(e=>e.id===id?{...e,name,grams,calories}:e);
+  await fbSet('today', {date:todayStr(), entries});
+  closeModal(); renderDashboard();
+}
+
+async function quickAdd(pantryId) {
+  const item = pantry.find(p=>p.id===pantryId);
+  if (!item) return;
+  const chip = document.getElementById('chip-'+pantryId);
+  if (chip) { chip.style.borderColor='var(--accent)'; chip.style.background='var(--accent-light)'; }
+  await addEntry(item.name, item.cal100||0, item.grams, item.calories);
+  await saveToPantry(item);
+  setTimeout(()=>{ if(chip){chip.style.borderColor='';chip.style.background='';} },800);
+}
+
+// ══════════════════════════════════════════
+// PANTRY
+// ══════════════════════════════════════════
+async function saveToPantry(item) {
+  if (!Array.isArray(pantry)) pantry=[];
+  const idx = pantry.findIndex(p=>p.name===item.name);
+  if (idx>=0) {
+    pantry[idx] = {...pantry[idx], count:(pantry[idx].count||0)+1, lastUsed:Date.now(), grams:item.grams, calories:item.calories};
+  } else {
+    pantry = [...pantry, {id:uid(), name:item.name, cal100:item.cal100||0, grams:item.grams, calories:item.calories, count:1, lastUsed:Date.now()}];
+  }
+  pantry.sort((a,b)=>(b.count||0)-(a.count||0));
+  await fbSet('pantry', pantry);
+}
+
+async function removeFromPantry(id) {
+  pantry = pantry.filter(p=>p.id!==id);
+  await fbSet('pantry', pantry);
+  renderPantryTab();
+  renderQuickAdd();
+}
+
+function renderPantryTab() {
+  const list = document.getElementById('pantry-list');
+  const empty = document.getElementById('pantry-empty');
+  if (!pantry.length) { empty.style.display='block'; list.innerHTML=''; return; }
+  empty.style.display='none';
+  list.innerHTML = pantry.map(item=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--card2);border-radius:12px;border:1px solid var(--border);margin-bottom:8px;">
+      <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;border:1px solid #fde68a;">
+        <div style="font-size:13px;font-weight:800;color:#d97706;line-height:1;">${item.count||1}</div>
+        <div style="font-size:9px;color:#b45309;">פעם</div>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:600;">${item.name}</div>
+        <div style="font-size:11px;color:var(--muted);">${item.grams}ג׳ · ${item.cal100||'?'} קל׳/100ג׳</div>
+      </div>
+      <div style="font-size:14px;font-weight:800;color:var(--accent);background:var(--accent-light);border-radius:8px;padding:4px 8px;flex-shrink:0;">${item.calories}<span style="font-size:9px;"> קל׳</span></div>
+      <button onclick="quickAddFromPantry('${item.id}')" style="background:linear-gradient(135deg,var(--accent),#15803d);border:none;border-radius:9px;width:34px;height:34px;cursor:pointer;color:#fff;font-size:18px;font-weight:700;flex-shrink:0;box-shadow:0 3px 8px rgba(22,163,74,0.3);">+</button>
+      <button onclick="removeFromPantry('${item.id}')" style="background:var(--card);border:1px solid var(--border);border-radius:9px;width:34px;height:34px;cursor:pointer;color:var(--muted);font-size:13px;flex-shrink:0;">✕</button>
+    </div>`).join('');
+}
+
+async function quickAddFromPantry(id) {
+  const item = pantry.find(p=>p.id===id);
+  if (!item) return;
+  await addEntry(item.name, item.cal100||0, item.grams, item.calories);
+  closeModal();
+}
+
+// ══════════════════════════════════════════
+// MODAL
+// ══════════════════════════════════════════
+function openModal(which) {
+  document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));
+  document.getElementById('modal-'+which).classList.add('open');
+  if (which==='add') {
+    setTab(pantry.length>0?'pantry':'text');
+    document.getElementById('modal-title').textContent = 'הוסף מאכל';
+    resetImg(); resetBarcode();
+    document.getElementById('search-input').value='';
+    document.getElementById('search-results').innerHTML='';
+    document.getElementById('selected-food').style.display='none';
+    document.getElementById('manual-entry').style.display='none';
+  }
+}
+function closeModal() {
+  document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));
+  stopScan();
+}
+
+// ══════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════
+const tabColors = { pantry:'gold', text:'blue', image:'teal', barcode:'purple' };
+function setTab(name) {
+  ['pantry','text','image','barcode'].forEach(t=>{
+    document.getElementById('tab-content-'+t).style.display = t===name?'':'none';
+    const btn = document.getElementById('tab-'+t);
+    btn.className = 'tab';
+    if (t===name) btn.classList.add('active-'+tabColors[t]);
+  });
+  if (name==='pantry') renderPantryTab();
+  if (name==='text') setTimeout(()=>document.getElementById('search-input').focus(),100);
+}
+
+// ══════════════════════════════════════════
+// SEARCH
+// ══════════════════════════════════════════
+function searchFoods(q) {
+  const res = document.getElementById('search-results');
+  const manEl = document.getElementById('manual-entry');
+  const selEl = document.getElementById('selected-food');
+  selEl.style.display='none';
+  if (!q.trim()) { res.innerHTML=''; manEl.style.display='none'; return; }
+  const matches = FOODS.filter(f=>f.name.includes(q.trim())||f.cat.includes(q.trim())).slice(0,8);
+  if (matches.length) {
+    manEl.style.display='none';
+    res.innerHTML=`<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(30,60,120,0.08);">
+      ${matches.map((f,i)=>`
+        <div onclick="selectFood(${f.id})"
+          style="padding:10px 14px;cursor:pointer;background:${i%2?'var(--card2)':'#fff'};display:flex;justify-content:space-between;align-items:center;${i<matches.length-1?'border-bottom:1px solid var(--border);':''}">
+          <div><div style="font-size:14px;font-weight:600;">${f.name}</div><div style="font-size:11px;color:var(--muted);">${f.cat}</div></div>
+          <div style="font-size:13px;color:var(--accent);font-weight:700;background:var(--accent-light);border-radius:8px;padding:3px 8px;">${f.cal} קל׳/100ג׳</div>
+        </div>`).join('')}
+    </div>`;
+  } else {
+    res.innerHTML='';
+    manEl.style.display='block';
+    document.getElementById('manual-name').value=q;
+  }
+}
+
+function selectFood(id) {
+  const f = FOODS.find(x=>x.id===id);
+  if (!f) return;
+  selectedFood = f;
+  document.getElementById('search-results').innerHTML='';
+  document.getElementById('manual-entry').style.display='none';
+  document.getElementById('search-input').value=f.name;
+  document.getElementById('selected-name').textContent='✓ '+f.name;
+  document.getElementById('food-grams').value='100';
+  document.getElementById('selected-food').style.display='block';
+  updateCalPreview();
+}
+
+function updateCalPreview() {
+  if (!selectedFood) return;
+  const g = Number(document.getElementById('food-grams').value)||100;
+  document.getElementById('cal-preview').textContent = Math.round(selectedFood.cal*g/100);
+}
+
+async function confirmAddFood() {
+  if (!selectedFood) return;
+  const grams = Number(document.getElementById('food-grams').value)||100;
+  await addEntry(selectedFood.name, selectedFood.cal, grams);
+  closeModal();
+}
+
+async function addManual() {
+  const name = document.getElementById('manual-name').value.trim();
+  const cal100 = Number(document.getElementById('manual-cal').value);
+  if (!name || !cal100) return;
+  await addEntry(name, cal100, 100);
+  closeModal();
+}
+
+// ══════════════════════════════════════════
+// IMAGE
+// ══════════════════════════════════════════
+function handleImageFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  setTab('image');
+  analyzeImage(file);
+}
+
+async function analyzeImage(file) {
+  document.getElementById('img-drop-zone').style.display='none';
+  document.getElementById('img-analyzing').style.display='block';
+  document.getElementById('img-error').style.display='none';
+  document.getElementById('img-result').style.display='none';
+  try {
+    const base64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:400,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:base64}},
+          {type:'text',text:'זהה את המאכל בתמונה. ענה אך ורק בJSON ללא backticks:\n{"foodName":"שם בעברית","cal100":קלוריות_ל100גרם,"estimatedGrams":כמות_משוערת,"notes":"הערה"}'}
+        ]}]
+      })
+    });
+    const d = await resp.json();
+    if (d.error) throw new Error(d.error.message);
+    const txt = d.content?.find(c=>c.type==='text')?.text||'';
+    const parsed = JSON.parse(txt.replace(/```[\w]*/g,'').trim());
+    imgCal100 = parsed.cal100;
+    document.getElementById('img-food-name').textContent = '✓ זיהוי: '+parsed.foodName;
+    document.getElementById('img-notes').textContent = parsed.notes||'';
+    document.getElementById('img-grams').value = parsed.estimatedGrams||100;
+    updateImgCalPreview();
+    document.getElementById('img-result').style.display='block';
+  } catch(e) {
+    document.getElementById('img-error').textContent = '⚠️ לא הצלחתי לנתח את התמונה — נסה תמונה ברורה יותר';
+    document.getElementById('img-error').style.display='block';
+    document.getElementById('img-drop-zone').style.display='block';
+  }
+  document.getElementById('img-analyzing').style.display='none';
+}
+
+function updateImgCalPreview() {
+  const g = Number(document.getElementById('img-grams').value)||100;
+  document.getElementById('img-cal-preview').textContent = Math.round(imgCal100*g/100);
+}
+
+async function addImgFood() {
+  const name = document.getElementById('img-food-name').textContent.replace('✓ זיהוי: ','');
+  const g = Number(document.getElementById('img-grams').value)||100;
+  await addEntry(name, imgCal100, g);
+  closeModal();
+}
+
+function resetImg() {
+  imgCal100=0;
+  document.getElementById('img-drop-zone').style.display='block';
+  document.getElementById('img-result').style.display='none';
+  document.getElementById('img-error').style.display='none';
+  document.getElementById('img-analyzing').style.display='none';
+}
+
+// ══════════════════════════════════════════
+// BARCODE
+// ══════════════════════════════════════════
+async function lookupBarcode(code) {
+  code = String(code).replace(/\D/g,'');
+  if (!code) return;
+  document.getElementById('barcode-loading').style.display='block';
+  document.getElementById('barcode-error').style.display='none';
+  document.getElementById('barcode-result').style.display='none';
+  try {
+    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
+    const d = await res.json();
+    if (d.status===1) {
+      const p=d.product;
+      const name=p.product_name_he||p.product_name||'מוצר לא ידוע';
+      const cal=Math.round(p.nutriments?.['energy-kcal_100g']??(p.nutriments?.energy_100g/4.184)??0);
+      barcodeCal100=cal;
+      document.getElementById('barcode-product-name').textContent='✓ '+name;
+      document.getElementById('barcode-grams').value='100';
+      updateBarcodeCalPreview();
+      document.getElementById('barcode-result').style.display='block';
+    } else {
+      showBarcodeError('המוצר לא נמצא — נסה ברקוד אחר או הזן ידנית');
+    }
+  } catch { showBarcodeError('שגיאת רשת — בדוק חיבור'); }
+  document.getElementById('barcode-loading').style.display='none';
+}
+
+function showBarcodeError(msg) { const el=document.getElementById('barcode-error'); el.textContent='⚠️ '+msg; el.style.display='block'; }
+function updateBarcodeCalPreview() {
+  const g=Number(document.getElementById('barcode-grams').value)||100;
+  document.getElementById('barcode-cal-preview').textContent=Math.round(barcodeCal100*g/100);
+}
+async function addBarcodeFood() {
+  const name=document.getElementById('barcode-product-name').textContent.replace('✓ ','');
+  const g=Number(document.getElementById('barcode-grams').value)||100;
+  await addEntry(name,barcodeCal100,g);
+  closeModal();
+}
+function resetBarcode() {
+  barcodeCal100=0;
+  document.getElementById('barcode-result').style.display='none';
+  document.getElementById('barcode-error').style.display='none';
+  document.getElementById('barcode-input').value='';
+}
+
+let scanRef = false;
+async function toggleScan() {
+  if (scanningActive) { stopScan(); return; }
+  document.getElementById('barcode-error').style.display='none';
+  if (!navigator.mediaDevices?.getUserMedia) { showBarcodeError('הדפדפן אינו תומך במצלמה'); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
+    barcodeStream=stream; scanningActive=true; scanRef=true;
+    const video=document.getElementById('barcode-video');
+    video.srcObject=stream; video.play();
+    document.getElementById('video-container').style.display='block';
+    document.getElementById('scan-btn').textContent='⛔ עצור סריקה';
+    document.getElementById('scan-btn').classList.add('btn-red');
+    document.getElementById('scan-btn').classList.remove('btn-purple');
+    if (!('BarcodeDetector' in window)) {
+      document.getElementById('no-barcode-detector').style.display='block';
+      return;
+    }
+    const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','qr_code']});
+    const loop=async()=>{
+      if(!scanRef||!video) return;
+      try{ const c=await det.detect(video); if(c.length){stopScan();document.getElementById('barcode-input').value=c[0].rawValue;lookupBarcode(c[0].rawValue);return;} }catch{}
+      if(scanRef) requestAnimationFrame(loop);
+    };
+    video.addEventListener('playing',loop,{once:true});
+  } catch(e) {
+    showBarcodeError(e.name==='NotAllowedError'?'גישה למצלמה נדחתה — אפשר גישה בהגדרות הדפדפן':'לא ניתן לפתוח מצלמה');
+  }
+}
+function stopScan() {
+  scanRef=false; scanningActive=false;
+  barcodeStream?.getTracks().forEach(t=>t.stop()); barcodeStream=null;
+  const v=document.getElementById('barcode-video'); if(v) v.srcObject=null;
+  document.getElementById('video-container').style.display='none';
+  const btn=document.getElementById('scan-btn');
+  btn.textContent='📷 סרוק ברקוד עם מצלמה';
+  btn.classList.remove('btn-red'); btn.classList.add('btn-purple');
+}
+
+// ══════════════════════════════════════════
+// HISTORY
+// ══════════════════════════════════════════
+function renderHistory() {
+  const last7 = [...history].slice(-7).reverse();
+  const avg = last7.length ? Math.round(last7.reduce((s,d)=>s+d.totalCalories,0)/last7.length) : 0;
+  const onTarget = last7.filter(d=>d.totalCalories<=d.target*1.05).length;
+  document.getElementById('hist-avg').textContent = avg?n(avg)+' קל׳':'-';
+  document.getElementById('hist-ontarget').textContent = last7.length?`${onTarget}/${last7.length}`:'-';
+
+  // Bar chart
+  const chartData = [...history].slice(-7);
+  const maxCal = Math.max(...chartData.map(d=>d.totalCalories), 1);
+  const chartEl = document.getElementById('bar-chart');
+  const labelsEl = document.getElementById('bar-labels');
+  chartEl.innerHTML = chartData.map(d=>{
+    const h = Math.round((d.totalCalories/maxCal)*100);
+    const col = d.totalCalories>d.target*1.05 ? 'var(--danger)' : 'var(--accent)';
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <div style="font-size:10px;color:var(--muted);">${d.totalCalories>999?(d.totalCalories/1000).toFixed(1)+'k':d.totalCalories}</div>
+      <div style="width:100%;background:${col};border-radius:4px 4px 0 0;height:${h}px;min-height:2px;"></div>
+    </div>`;}).join('');
+  labelsEl.innerHTML = chartData.map(d=>`<div style="flex:1;text-align:center;font-size:10px;color:var(--muted);">${shortDay(d.date)}</div>`).join('');
+
+  // List
+  const listEl = document.getElementById('history-list');
+  if (!last7.length) { listEl.innerHTML='<div style="text-align:center;color:var(--muted);padding:32px;"><div style="font-size:40px;margin-bottom:8px;">📅</div><div>אין היסטוריה עדיין</div></div>'; return; }
+  listEl.innerHTML = last7.map(day=>{
+    const pct=Math.round(day.totalCalories/day.target*100);
+    const col=pct>105?'var(--danger)':pct>90?'var(--accent)':'var(--muted)';
+    return `<div class="card-sm" style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="font-size:14px;font-weight:700;">${heDay(day.date)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${day.entries?.length||0} מאכלים</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:20px;font-weight:800;color:${col};">${n(day.totalCalories)}</div>
+          <div style="font-size:10px;color:var(--muted);">/ ${n(day.target)} קל׳</div>
+        </div>
+      </div>
+      <div class="progress-track" style="margin-top:10px;">
+        <div class="progress-bar" style="width:${Math.min(pct,100)}%;background:${col};"></div>
+      </div>
+    </div>`;}).join('');
+}
+
+function exportCSV() {
+  let csv = '\uFEFF"תאריך","יום","קלוריות שנצרכו","יעד","הפרש","% יעד","מאכלים"\n';
+  history.forEach(d=>{
+    const foods=(d.entries||[]).map(e=>`${e.name}(${e.calories})`).join('|');
+    const diff=d.totalCalories-d.target;
+    const pct=Math.round(d.totalCalories/d.target*100);
+    csv+=`"${d.date}","${heDay(d.date).split(' ')[0]}","${d.totalCalories}","${d.target}","${diff}","${pct}%","${foods}"\n`;
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`מעקב-קלוריות-${todayStr()}.csv`; a.click();
+}
+
+// ══════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════
+function renderSettings() {
+  if (!profile) return;
+  document.getElementById('set-name').value=profile.name||'';
+  document.getElementById('set-age').value=profile.age||'';
+  document.getElementById('set-height').value=profile.height||'';
+  document.getElementById('set-weight').value=profile.weight||'';
+  document.getElementById('set-activity').value=profile.activityLevel||'moderate';
+  setCurrentGoal=profile.goal||'lose';
+  setCurrentRate=profile.lossRate||0.5;
+  updateGoalButtons();
+  updateSetRateList();
+  updateSetPreview();
+  const saved=localStorage.getItem('ct-firebase-config');
+  if(saved) document.getElementById('firebase-status').textContent='✅ מחובר — סנכרון פעיל';
+}
+
+function setGoalBtn(g) { setCurrentGoal=g; updateGoalButtons(); updateSetPreview(); }
+function updateGoalButtons() {
+  ['lose','maintain','gain'].forEach(g=>{
+    const btn=document.getElementById('set-goal-'+g);
+    btn.className='btn btn-sm'+(setCurrentGoal===g?'':' btn-ghost');
+    if(setCurrentGoal===g) btn.style.cssText='flex:1;font-size:12px;';
+    else btn.style.cssText='flex:1;font-size:12px;';
+  });
+  document.getElementById('set-lossrate-section').style.display=setCurrentGoal==='lose'?'block':'none';
+}
+function updateSetRateList() {
+  document.getElementById('set-rate-list').innerHTML=LOSS_RATES.map(r=>`
+    <button onclick="setCurrentRate=${r.val};updateSetRateList();updateSetPreview();"
+      style="padding:9px 12px;border-radius:10px;border:1px solid ${setCurrentRate===r.val?'var(--accent)':'var(--border)'};
+             background:${setCurrentRate===r.val?'var(--accent-light)':'transparent'};
+             cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;align-items:center;width:100%;">
+      <span style="font-size:13px;font-weight:700;color:${setCurrentRate===r.val?'var(--accent)':'var(--text)'};">${r.label}</span>
+      <span style="font-size:12px;color:var(--muted);">−${r.deficit} קל'/יום</span>
+    </button>`).join('');
+}
+function updateSetPreview() {
+  const p={age:+document.getElementById('set-age').value||34,height:+document.getElementById('set-height').value||174,
+    weight:+document.getElementById('set-weight').value||79,gender:profile?.gender||'male',
+    activityLevel:document.getElementById('set-activity').value,goal:setCurrentGoal,lossRate:setCurrentRate};
+  if(p.age&&p.height&&p.weight) document.getElementById('set-preview').textContent=n(calcTarget(p));
+}
+
+async function saveSettings() {
+  const p={...profile,
+    name:document.getElementById('set-name').value,
+    age:+document.getElementById('set-age').value,
+    height:+document.getElementById('set-height').value,
+    weight:+document.getElementById('set-weight').value,
+    activityLevel:document.getElementById('set-activity').value,
+    goal:setCurrentGoal, lossRate:setCurrentRate
+  };
+  p.targetCalories=calcTarget(p); p.bmr=Math.round(calcBMR(p)); p.tdee=calcTDEE(p);
+  profile=p;
+  await fbSet('profile',p);
+  showScreen('dashboard');
+}
+
+async function resetApp() {
+  if (!confirm('האם לאפס את כל הנתונים? פעולה זו בלתי הפיכה.')) return;
+  entries=[]; history=[]; pantry=[];
+  await fbSet('profile',null); await fbSet('today',null); await fbSet('history',null); await fbSet('pantry',null);
+  localStorage.clear();
+  location.reload();
+}
+
+// ══════════════════════════════════════════
+// FIREBASE SETUP UI
+// ══════════════════════════════════════════
+function showFirebaseSetup() { openModal('firebase'); }
+function saveFirebaseConfig() {
+  const raw=document.getElementById('firebase-config-input').value.trim();
+  try {
+    const cfg=JSON.parse(raw);
+    if (!cfg.apiKey||!cfg.databaseURL) { alert('חסרים שדות — ודא שה-JSON מלא ושה-databaseURL קיים'); return; }
+    localStorage.setItem('ct-firebase-config',raw);
+    if (initFirebase(cfg)) {
+      closeModal();
+      document.getElementById('firebase-status').textContent='✅ מחובר — סנכרון פעיל';
+      alert('✅ סנכרון הופעל בהצלחה! כל המכשירים שיפתחו את הקובץ עם אותו חשבון Firebase יהיו מסונכרנים.');
+    } else { alert('שגיאה בהתחברות — בדוק את פרטי ה-Firebase'); }
+  } catch(e) { alert('JSON לא תקין — בדוק את הפורמט'); }
+}
+
+// ══════════════════════════════════════════
+// SETUP SCREEN
+// ══════════════════════════════════════════
+function selectGender(g) {
+  currentGender=g;
+  document.getElementById('btn-male').className='btn btn-sm'+(g==='male'?' btn-blue':' btn-ghost');
+  document.getElementById('btn-female').className='btn btn-sm'+(g==='female'?' btn-blue':' btn-ghost');
+  document.getElementById('btn-male').style.flex='1';
+  document.getElementById('btn-female').style.flex='1';
+}
+function selectGoal(g) {
+  currentGoal=g;
+  ['lose','maintain','gain'].forEach(x=>{
+    document.getElementById('goal-'+x).className='btn btn-sm'+(x===g?'':' btn-ghost');
+    document.getElementById('goal-'+x).style.cssText='justify-content:flex-start;gap:10px;';
+  });
+  document.getElementById('loss-rates').style.display=g==='lose'?'block':'none';
+  updatePreview();
+}
+function buildRateList() {
+  document.getElementById('rate-list').innerHTML=LOSS_RATES.map(r=>`
+    <button onclick="currentRate=${r.val};buildRateList();updatePreview();"
+      style="padding:9px 12px;border-radius:10px;border:1px solid ${currentRate===r.val?'var(--accent)':'var(--border)'};
+             background:${currentRate===r.val?'var(--accent-light)':'transparent'};cursor:pointer;font-family:inherit;
+             display:flex;justify-content:space-between;align-items:center;width:100%;">
+      <span style="font-size:13px;font-weight:700;color:${currentRate===r.val?'var(--accent)':'var(--text)'};">${r.label}</span>
+      <span style="font-size:12px;color:var(--muted);">−${r.deficit} קל'/יום</span>
+    </button>`).join('');
+}
+function updatePreview() {
+  const age=+document.getElementById('s-age').value;
+  const h=+document.getElementById('s-height').value;
+  const w=+document.getElementById('s-weight').value;
+  const act=document.getElementById('s-activity').value;
+  if (!age||!h||!w) { document.getElementById('setup-preview').style.display='none'; return; }
+  const p={gender:currentGender,age,height:h,weight:w,activityLevel:act,goal:currentGoal,lossRate:currentRate};
+  const t=calcTarget(p);
+  document.getElementById('preview-cal').textContent=n(t);
+  const rateObj=LOSS_RATES.find(r=>r.val===currentRate)||LOSS_RATES[1];
+  document.getElementById('preview-note').textContent=currentGoal==='lose'?`גירעון ${rateObj.deficit} קל'/יום · ~${Math.round(7700/rateObj.deficit)} יום לק"ג`:'';
+  document.getElementById('setup-preview').style.display='block';
+}
+function setupNext() {
+  const name=document.getElementById('s-name').value.trim();
+  const age=+document.getElementById('s-age').value;
+  const h=+document.getElementById('s-height').value;
+  const w=+document.getElementById('s-weight').value;
+  if (!name||!age||!h||!w) { alert('אנא מלא את כל השדות'); return; }
+  document.getElementById('setup-step1').style.display='none';
+  document.getElementById('setup-step2').style.display='block';
+  document.getElementById('dot1').style.width='8px'; document.getElementById('dot1').style.background='var(--accent-dim)';
+  document.getElementById('dot2').style.width='32px'; document.getElementById('dot2').style.background='var(--accent)';
+  buildRateList(); selectGoal('lose'); updatePreview();
+}
+function setupBack() {
+  document.getElementById('setup-step2').style.display='none';
+  document.getElementById('setup-step1').style.display='block';
+  document.getElementById('dot1').style.width='32px'; document.getElementById('dot1').style.background='var(--accent)';
+  document.getElementById('dot2').style.width='8px'; document.getElementById('dot2').style.background='var(--border)';
+}
+async function setupComplete() {
+  const p={
+    name:document.getElementById('s-name').value.trim(),
+    gender:currentGender,
+    age:+document.getElementById('s-age').value,
+    height:+document.getElementById('s-height').value,
+    weight:+document.getElementById('s-weight').value,
+    activityLevel:document.getElementById('s-activity').value,
+    goal:currentGoal, lossRate:currentRate
+  };
+  p.targetCalories=calcTarget(p); p.bmr=Math.round(calcBMR(p)); p.tdee=calcTDEE(p);
+  profile=p;
+  await fbSet('profile',p);
+  await fbSet('today',{date:todayStr(),entries:[]});
+  showScreen('dashboard');
+  document.getElementById('fab-btn').style.display='';
+}
+
+// ══════════════════════════════════════════
+// START
+// ══════════════════════════════════════════
+selectGender('male');
+buildRateList();
+document.getElementById('s-age').addEventListener('input',updatePreview);
+document.getElementById('s-height').addEventListener('input',updatePreview);
+document.getElementById('s-weight').addEventListener('input',updatePreview);
+document.getElementById('s-activity').addEventListener('change',updatePreview);
+document.getElementById('set-age').addEventListener('input',updateSetPreview);
+document.getElementById('set-height').addEventListener('input',updateSetPreview);
+document.getElementById('set-weight').addEventListener('input',updateSetPreview);
+document.getElementById('set-activity').addEventListener('change',updateSetPreview);
+window.addEventListener('load', init);
+
+// ══════════════════════════════════════════
+// PWA — SERVICE WORKER + INSTALL
+// ══════════════════════════════════════════
+// Register inline service worker for offline support
+const swCode = `
+const CACHE = 'calorie-tracker-v1';
+const ASSETS = [
+  'https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap',
+  'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js'
+];
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS).catch(()=>{})));
+  self.skipWaiting();
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(clients.claim());
+});
+self.addEventListener('fetch', e => {
+  e.respondWith(
+    caches.match(e.request).then(cached => cached || fetch(e.request).catch(() => cached))
+  );
+});
+`;
+if ('serviceWorker' in navigator) {
+  const swBlob = new Blob([swCode], {type:'text/javascript'});
+  const swUrl  = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swUrl).catch(()=>{});
+}
+
+// Install banner
+let deferredPrompt = null;
+const installBanner = document.getElementById('install-banner');
+const installBtn    = document.getElementById('install-btn');
+const installDismiss = document.getElementById('install-dismiss');
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Show banner only if not already installed
+  if (!window.matchMedia('(display-mode: standalone)').matches) {
+    installBanner.style.display = 'flex';
+  }
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    installBanner.style.display = 'none';
+    if (outcome === 'accepted') {
+      document.getElementById('install-success').style.display = 'flex';
+      setTimeout(() => document.getElementById('install-success').style.display = 'none', 4000);
+    }
+  });
+}
+if (installDismiss) {
+  installDismiss.addEventListener('click', () => {
+    installBanner.style.display = 'none';
+    localStorage.setItem('ct-install-dismissed', '1');
+  });
+}
+
+// Hide banner if already installed
+if (window.matchMedia('(display-mode: standalone)').matches) {
+  if (installBanner) installBanner.style.display = 'none';
+}
+</script>
+
+<!-- Install banner (Android Chrome) -->
+<div id="install-banner" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:500;
+  background:#fff; border-top:1px solid #e2eaf5; padding:14px 20px; gap:12px;
+  align-items:center; box-shadow:0 -4px 20px rgba(30,60,120,0.12); flex-wrap:wrap;">
+  <div style="font-size:32px;">🥗</div>
+  <div style="flex:1; min-width:0;">
+    <div style="font-size:14px; font-weight:700;">התקן כאפליקציה</div>
+    <div style="font-size:12px; color:#5a7299;">גישה מהירה מהמסך הבית, עובד אופליין</div>
+  </div>
+  <button id="install-btn" style="background:linear-gradient(135deg,#16a34a,#15803d); color:#fff;
+    border:none; border-radius:12px; padding:10px 18px; font-weight:700; font-size:14px;
+    cursor:pointer; font-family:inherit; white-space:nowrap; box-shadow:0 4px 12px rgba(22,163,74,0.3);">
+    📲 התקן
+  </button>
+  <button id="install-dismiss" style="background:transparent; border:none; color:#94afc8;
+    font-size:20px; cursor:pointer; padding:4px;">✕</button>
+</div>
+
+<!-- Install success toast -->
+<div id="install-success" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%);
+  z-index:600; background:#16a34a; color:#fff; border-radius:20px; padding:10px 20px;
+  font-size:13px; font-weight:700; gap:6px; align-items:center; box-shadow:0 4px 20px rgba(22,163,74,0.4);">
+  ✅ האפליקציה הותקנה בהצלחה!
+</div>
+
+<!-- iOS install instructions (shown on Safari/iOS) -->
+<div id="ios-banner" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:500;
+  background:#fff; border-top:1px solid #e2eaf5; padding:16px 20px;
+  box-shadow:0 -4px 20px rgba(30,60,120,0.12);">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <div style="font-size:14px; font-weight:700;">📲 הוסף למסך הבית</div>
+    <button onclick="document.getElementById('ios-banner').style.display='none'"
+      style="background:transparent; border:none; color:#94afc8; font-size:20px; cursor:pointer;">✕</button>
+  </div>
+  <div style="font-size:13px; color:#5a7299; line-height:1.9;">
+    1. לחץ על כפתור השיתוף <strong>⬆</strong> בתחתית המסך<br>
+    2. גלול למטה ← "הוסף למסך הבית" <strong>➕</strong><br>
+    3. לחץ "הוסף" — האפליקציה תופיע על המסך
+  </div>
+</div>
+
+<script>
+// Show iOS banner on Safari
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isSafari = /safari/i.test(navigator.userAgent) && !/chrome/i.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+if (isIOS && isSafari && !isStandalone && !localStorage.getItem('ct-ios-dismissed')) {
+  setTimeout(() => { document.getElementById('ios-banner').style.display = 'block'; }, 3000);
+  document.getElementById('ios-banner').querySelector('button').addEventListener('click', () => {
+    localStorage.setItem('ct-ios-dismissed','1');
+  });
+}
+</script>
+</body>
+</html>
