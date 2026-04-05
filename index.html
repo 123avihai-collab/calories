@@ -397,6 +397,17 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
         <div style="font-size:12px; color:var(--muted); margin-bottom:10px;" id="firebase-status">לא מוגדר — נתונים נשמרים מקומית בלבד</div>
         <button class="btn btn-sm btn-blue btn-w" onclick="showFirebaseSetup()">הגדר סנכרון</button>
       </div>
+      <!-- Anthropic API Key -->
+      <div class="card" style="margin-bottom:14px; border-color:rgba(124,58,237,0.3);">
+        <div style="font-size:14px; font-weight:700; margin-bottom:4px;">🤖 מפתח AI לזיהוי תמונות</div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:10px;">נדרש לזיהוי מאכלים מתמונה</div>
+        <input class="input" id="anthropic-key-input" type="password"
+          placeholder="sk-ant-api03-..."
+          style="margin-bottom:10px; font-size:13px; font-family:monospace;">
+        <button class="btn btn-sm btn-w" style="background:linear-gradient(135deg,#7c3aed,#6d28d9); box-shadow:0 4px 14px rgba(124,58,237,0.3);"
+          onclick="saveAnthropicKey()">💾 שמור מפתח</button>
+        <div id="anthropic-key-status" style="font-size:12px; color:var(--muted); margin-top:8px;"></div>
+      </div>
       <button onclick="resetApp()" style="width:100%; padding:12px; border-radius:12px; border:1px solid var(--danger); background:transparent; color:var(--danger); cursor:pointer; font-size:13px; font-family:inherit; font-weight:600;">⚠ איפוס האפליקציה</button>
     </div>
   </div>
@@ -1173,10 +1184,14 @@ async function analyzeImage(file) {
   document.getElementById('img-result').style.display='none';
   try {
     const base64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
+    const apiKey = localStorage.getItem('ct-anthropic-key') || '';
+    if (!apiKey) {
+      throw new Error('חסר מפתח API — הגדר אותו בלשונית פרופיל');
+    }
     const resp = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST', headers:{
         'Content-Type':'application/json',
-        'x-api-key':'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',
+        'x-api-key': apiKey,
         'anthropic-version':'2023-06-01',
         'anthropic-dangerous-direct-browser-access':'true'
       },
@@ -1387,6 +1402,9 @@ function renderSettings() {
   updateSetPreview();
   const saved=localStorage.getItem('ct-firebase-config');
   if(saved) document.getElementById('firebase-status').textContent='✅ מחובר — סנכרון פעיל';
+  // Show API key status
+  const hasKey = !!localStorage.getItem('ct-anthropic-key');
+  document.getElementById('anthropic-key-status').textContent = hasKey ? '✅ מפתח מוגדר' : '⚠️ לא הוגדר מפתח';
   // attach listeners once
   ['set-age','set-height','set-weight'].forEach(id=>{
     const el=document.getElementById(id);
@@ -1395,7 +1413,16 @@ function renderSettings() {
   document.getElementById('set-activity').onchange=updateSetPreview;
 }
 
-function setGoalBtn(g) { setCurrentGoal=g; updateGoalButtons(); updateSetPreview(); }
+function saveAnthropicKey() {
+  const key = document.getElementById('anthropic-key-input').value.trim();
+  if (!key.startsWith('sk-ant-')) { 
+    document.getElementById('anthropic-key-status').textContent = '❌ מפתח לא תקין';
+    return; 
+  }
+  localStorage.setItem('ct-anthropic-key', key);
+  document.getElementById('anthropic-key-status').textContent = '✅ מפתח נשמר בהצלחה';
+  document.getElementById('anthropic-key-input').value = '';
+}
 function updateGoalButtons() {
   ['lose','maintain','gain'].forEach(g=>{
     const btn=document.getElementById('set-goal-'+g);
@@ -1473,7 +1500,7 @@ window.addEventListener('load', init);
 // ══════════════════════════════════════════
 // Register inline service worker for offline support
 const swCode = `
-const CACHE = 'calorie-tracker-v1';
+const CACHE = 'calorie-tracker-v3';
 const ASSETS = [
   'https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
@@ -1484,11 +1511,15 @@ self.addEventListener('install', e => {
   self.skipWaiting();
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(clients.claim());
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.filter(k => k !== 'calorie-tracker-v3').map(k => caches.delete(k))
+    )).then(() => clients.claim())
+  );
 });
 self.addEventListener('fetch', e => {
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request).catch(() => cached))
+    fetch(e.request).catch(() => caches.match(e.request))
   );
 });
 `;
