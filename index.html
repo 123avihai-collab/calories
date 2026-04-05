@@ -1180,7 +1180,7 @@ async function analyzeImage(file) {
         'anthropic-version':'2023-06-01',
         'anthropic-dangerous-direct-browser-access':'true'
       },
-      body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:400,
+      body:JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:400,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:base64}},
           {type:'text',text:'זהה את המאכל בתמונה. ענה אך ורק בJSON ללא backticks:\n{"foodName":"שם בעברית","cal100":קלוריות_ל100גרם,"estimatedGrams":כמות_משוערת,"notes":"הערה"}'}
@@ -1198,7 +1198,7 @@ async function analyzeImage(file) {
     updateImgCalPreview();
     document.getElementById('img-result').style.display='block';
   } catch(e) {
-    document.getElementById('img-error').textContent = '⚠️ לא הצלחתי לנתח את התמונה — נסה תמונה ברורה יותר';
+    document.getElementById('img-error').textContent = '⚠️ שגיאה: ' + (e.message||'לא הצלחתי לנתח את התמונה');
     document.getElementById('img-error').style.display='block';
     document.getElementById('img-drop-zone').style.display='block';
   }
