@@ -304,7 +304,13 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 
     <!-- Quick add -->
     <div id="quick-add-section" style="padding:14px 20px 0; display:none;">
-      <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:8px;">⭐ הוספה מהירה <span style="font-size:11px; font-weight:400;">· לחץ להוסיף</span></div>
+      <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+        <span>⭐ הוספה מהירה <span style="font-size:11px; font-weight:400;">· לחץ להוסיף</span></span>
+        <button onclick="openModal('add');setTimeout(()=>setTab('pantry'),50);"
+          style="font-size:11px; color:var(--blue); background:var(--blue-light); border:none; border-radius:8px; padding:4px 10px; cursor:pointer; font-family:inherit; font-weight:600;">
+          ראה הכל ←
+        </button>
+      </div>
       <div class="quick-strip" id="quick-strip"></div>
     </div>
 
@@ -461,7 +467,8 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
         <div style="font-size:13px;">מאכלים שתוסיף יישמרו כאן</div>
         <button class="btn btn-sm btn-blue" style="margin-top:14px;" onclick="setTab('text')">🔍 חפש מאכל ראשון</button>
       </div>
-      <div id="pantry-list"></div>
+      <div id="pantry-count" style="font-size:12px; color:var(--muted); margin-bottom:10px; display:none;"></div>
+      <div id="pantry-list" style="max-height:60vh; overflow-y:auto;"></div>
     </div>
 
     <!-- TEXT SEARCH TAB -->
@@ -694,9 +701,54 @@ const FOODS = [
   {id:104,name:"קנאפה",cal:378,cat:"ממתקים"},{id:105,name:"פיצה גבינה (פרוסה)",cal:266,cat:"פסט פוד"},
   {id:106,name:"המבורגר",cal:295,cat:"פסט פוד"},{id:107,name:"צ'יפס",cal:312,cat:"פסט פוד"},
   {id:108,name:"שניצל מטוגן",cal:296,cat:"פסט פוד"},
+  // מאכלים אישיים — אביחי
+  {id:200,name:"אורז לבן מבושל (אביחי)",cal:130,cat:"אישי"},
+  {id:201,name:"במבה ביסלי מיקס",cal:510,cat:"אישי"},
+  {id:202,name:"בננה",cal:89,cat:"אישי"},
+  {id:203,name:"דגני טריקס",cal:400,cat:"אישי"},
+  {id:204,name:"דפי אורז יבשים",cal:340,cat:"אישי"},
+  {id:205,name:"חומוס סלט קנוי",cal:280,cat:"אישי"},
+  {id:206,name:"חזה עוף צלוי",cal:165,cat:"אישי"},
+  {id:207,name:"טונה במים מסונן",cal:110,cat:"אישי"},
+  {id:208,name:"כדורי פלאפל",cal:330,cat:"אישי"},
+  {id:209,name:"כריך פסטרמה עינת",cal:225,cat:"אישי"},
+  {id:210,name:"כריות תלמה",cal:450,cat:"אישי"},
+  {id:211,name:"לאפה",cal:280,cat:"אישי"},
+  {id:212,name:"לחם לבן",cal:250,cat:"אישי"},
+  {id:213,name:"לחמניה רגילה",cal:280,cat:"אישי"},
+  {id:214,name:"מאפינס",cal:380,cat:"אישי"},
+  {id:215,name:"מעדן חלבון GO",cal:63,cat:"אישי"},
+  {id:216,name:"ספרייט רגיל",cal:40,cat:"אישי"},
+  {id:217,name:"עוגיות שוקולד צ'יפס",cal:480,cat:"אישי"},
+  {id:218,name:"פיצה קפואה מעדנות",cal:260,cat:"אישי"},
+  {id:219,name:"פרגית צלויה",cal:210,cat:"אישי"},
+  {id:220,name:"שווארמה בשר מעורב",cal:260,cat:"אישי"},
+  {id:221,name:"שוקולד מריר פרה",cal:520,cat:"אישי"},
+  {id:222,name:"שוקולד חלב פרה",cal:530,cat:"אישי"},
+  {id:223,name:"שייק חלבון אבקה",cal:380,cat:"אישי"},
   {id:109,name:"קורנפלקס",cal:357,cat:"ארוחת בוקר"},{id:110,name:"דייסת שיבולת שועל",cal:71,cat:"ארוחת בוקר"},
   {id:111,name:"שמן זית",cal:884,cat:"שמנים"},{id:112,name:"חמאה",cal:717,cat:"שמנים"},
   {id:113,name:"מיונז",cal:680,cat:"שמנים"},{id:114,name:"מיונז קל",cal:340,cat:"שמנים"},
+  // ═══ מאכלים אישיים — אביחי ═══
+  {id:200,name:"במבה ביסלי מיקס",cal:510,cat:"אישי"},
+  {id:201,name:"דגני טריקס",cal:400,cat:"אישי"},
+  {id:202,name:"דפי אורז יבשים",cal:340,cat:"אישי"},
+  {id:203,name:"חומוס סלט קנוי",cal:280,cat:"אישי"},
+  {id:204,name:"כדורי פלאפל",cal:330,cat:"אישי"},
+  {id:205,name:"כריך פסטרמה עינת",cal:225,cat:"אישי"},
+  {id:206,name:"כריות תלמה",cal:450,cat:"אישי"},
+  {id:207,name:"לאפה",cal:280,cat:"אישי"},
+  {id:208,name:"מאפינס",cal:380,cat:"אישי"},
+  {id:209,name:"מעדן חלבון GO",cal:63,cat:"אישי"},
+  {id:210,name:"ספרייט רגיל",cal:40,cat:"אישי"},
+  {id:211,name:"עוגיות שוקולד צ'יפס",cal:480,cat:"אישי"},
+  {id:212,name:"פיצה קפואה מעדנות",cal:260,cat:"אישי"},
+  {id:213,name:"פרגית צלויה",cal:210,cat:"אישי"},
+  {id:214,name:"שווארמה בשר מעורב",cal:260,cat:"אישי"},
+  {id:215,name:"שוקולד מריר פרה",cal:520,cat:"אישי"},
+  {id:216,name:"שוקולד חלב פרה",cal:530,cat:"אישי"},
+  {id:217,name:"שייק חלבון אבקה",cal:380,cat:"אישי"},
+  {id:218,name:"שניצל בתנור",cal:200,cat:"אישי"},
 ];
 
 const ACTIVITY = {
@@ -1044,8 +1096,11 @@ async function removeFromPantry(id) {
 function renderPantryTab() {
   const list = document.getElementById('pantry-list');
   const empty = document.getElementById('pantry-empty');
-  if (!pantry.length) { empty.style.display='block'; list.innerHTML=''; return; }
+  const countEl = document.getElementById('pantry-count');
+  if (!pantry.length) { empty.style.display='block'; list.innerHTML=''; countEl.style.display='none'; return; }
   empty.style.display='none';
+  countEl.style.display='block';
+  countEl.textContent = `${pantry.length} מאכלים שמורים · ממוין לפי שימוש`;
   list.innerHTML = pantry.map(item=>`
     <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--card2);border-radius:12px;border:1px solid var(--border);margin-bottom:8px;">
       <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;border:1px solid #fde68a;">
