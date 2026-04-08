@@ -12,6 +12,8 @@
 <title>מעקב קלוריות — אביחי</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <!-- PWA Manifest (inline via blob) -->
 <script>
@@ -49,17 +51,16 @@
      ══════════════════════════════════════════ -->
 <script>
   const FIREBASE_CONFIG = {
-    // ✏️ הדבק כאן את ה-firebaseConfig שלך מ-Firebase Console
-    // דוגמה:
-    // apiKey: "AIzaSy...",
-    // authDomain: "my-app.firebaseapp.com",
-    // databaseURL: "https://my-app-default-rtdb.firebaseio.com",
-    // projectId: "my-app",
-    // storageBucket: "my-app.appspot.com",
-    // messagingSenderId: "123456",
-    // appId: "1:123456:web:abc"
+    apiKey: "AIzaSyCx8HfinOAMO3XERshTog4zEBzgnxnlqJU",
+    authDomain: "calories-avihai.firebaseapp.com",
+    databaseURL: "https://calories-avihai-default-rtdb.firebaseio.com",
+    projectId: "calories-avihai",
+    storageBucket: "calories-avihai.firebasestorage.app",
+    messagingSenderId: "895086085987",
+    appId: "1:895086085987:web:5c1de797d2d20aa110f556",
+    measurementId: "G-E25FREQ3D2"
   };
-  const FIREBASE_USER_ID = "avichai"; // מזהה ייחודי לנתונים שלך
+  const FIREBASE_USER_ID = "avichai";
   const USE_FIREBASE = Object.keys(FIREBASE_CONFIG).length > 0;
 </script>
 
@@ -304,14 +305,50 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 
     <!-- Quick add -->
     <div id="quick-add-section" style="padding:14px 20px 0; display:none;">
-      <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-        <span>⭐ הוספה מהירה <span style="font-size:11px; font-weight:400;">· לחץ להוסיף</span></span>
-        <button onclick="openModal('add');setTimeout(()=>setTab('pantry'),50);"
-          style="font-size:11px; color:var(--blue); background:var(--blue-light); border:none; border-radius:8px; padding:4px 10px; cursor:pointer; font-family:inherit; font-weight:600;">
-          ראה הכל ←
-        </button>
-      </div>
+      <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:8px;">⭐ הוספה מהירה <span style="font-size:11px; font-weight:400;">· לחץ להוסיף</span></div>
       <div class="quick-strip" id="quick-strip"></div>
+    </div>
+
+    <!-- Macros card -->
+    <div style="padding:12px 20px 0;">
+      <div class="card" style="padding:16px;">
+        <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:14px;">🧬 מאקרו-נוטריינטים היום</div>
+        <div style="display:flex; gap:10px;">
+          <!-- Protein -->
+          <div style="flex:1;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;">
+              <span style="font-size:11px; font-weight:700; color:#3b82f6;">💪 חלבון</span>
+              <span style="font-size:14px; font-weight:800; color:#3b82f6;" id="macro-prot-val">0ג׳</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar" id="macro-prot-bar" style="width:0%; background:linear-gradient(90deg,#3b82f6,#60a5fa);"></div>
+            </div>
+            <div style="font-size:10px; color:var(--dim); margin-top:3px;" id="macro-prot-sub">מתוך ~0ג׳</div>
+          </div>
+          <!-- Carbs -->
+          <div style="flex:1;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;">
+              <span style="font-size:11px; font-weight:700; color:#f59e0b;">🌾 פחמימות</span>
+              <span style="font-size:14px; font-weight:800; color:#f59e0b;" id="macro-carb-val">0ג׳</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar" id="macro-carb-bar" style="width:0%; background:linear-gradient(90deg,#f59e0b,#fcd34d);"></div>
+            </div>
+            <div style="font-size:10px; color:var(--dim); margin-top:3px;" id="macro-carb-sub">מתוך ~0ג׳</div>
+          </div>
+          <!-- Fat -->
+          <div style="flex:1;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;">
+              <span style="font-size:11px; font-weight:700; color:#ec4899;">🥑 שומן</span>
+              <span style="font-size:14px; font-weight:800; color:#ec4899;" id="macro-fat-val">0ג׳</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar" id="macro-fat-bar" style="width:0%; background:linear-gradient(90deg,#ec4899,#f9a8d4);"></div>
+            </div>
+            <div style="font-size:10px; color:var(--dim); margin-top:3px;" id="macro-fat-sub">מתוך ~0ג׳</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Today's foods -->
@@ -403,18 +440,75 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
         <div style="font-size:12px; color:var(--muted); margin-bottom:10px;" id="firebase-status">לא מוגדר — נתונים נשמרים מקומית בלבד</div>
         <button class="btn btn-sm btn-blue btn-w" onclick="showFirebaseSetup()">הגדר סנכרון</button>
       </div>
-      <!-- Anthropic API Key -->
-      <div class="card" style="margin-bottom:14px; border-color:rgba(124,58,237,0.3);">
-        <div style="font-size:14px; font-weight:700; margin-bottom:4px;">🤖 מפתח AI לזיהוי תמונות</div>
-        <div style="font-size:12px; color:var(--muted); margin-bottom:10px;">נדרש לזיהוי מאכלים מתמונה</div>
-        <input class="input" id="anthropic-key-input" type="password"
-          placeholder="sk-ant-api03-..."
-          style="margin-bottom:10px; font-size:13px; font-family:monospace;">
-        <button class="btn btn-sm btn-w" style="background:linear-gradient(135deg,#7c3aed,#6d28d9); box-shadow:0 4px 14px rgba(124,58,237,0.3);"
-          onclick="saveAnthropicKey()">💾 שמור מפתח</button>
-        <div id="anthropic-key-status" style="font-size:12px; color:var(--muted); margin-top:8px;"></div>
-      </div>
       <button onclick="resetApp()" style="width:100%; padding:12px; border-radius:12px; border:1px solid var(--danger); background:transparent; color:var(--danger); cursor:pointer; font-size:13px; font-family:inherit; font-weight:600;">⚠ איפוס האפליקציה</button>
+    </div>
+  </div>
+
+  <!-- WEIGHT TRACKING SCREEN -->
+  <div id="screen-weight" class="screen">
+    <div style="padding:20px 20px 0; margin-bottom:18px;">
+      <h2 style="font-size:18px; font-weight:700;">מעקב משקל ⚖️</h2>
+    </div>
+    <div style="padding:0 20px;">
+
+      <!-- Log weight card -->
+      <div class="card" style="margin-bottom:14px; border-color:rgba(22,163,74,0.3);">
+        <div style="font-size:13px; font-weight:700; margin-bottom:12px;">📍 עדכון משקל שבועי</div>
+        <div style="display:flex; gap:10px; align-items:flex-end;">
+          <div style="flex:1;">
+            <label class="lbl">משקל נוכחי (ק"ג)</label>
+            <input class="input" id="wt-input" type="number" step="0.1" inputmode="decimal" placeholder="79.0">
+          </div>
+          <div style="flex:1;">
+            <label class="lbl">תאריך</label>
+            <input class="input" id="wt-date" type="date">
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <label class="lbl">הערה (אופציונלי)</label>
+          <input class="input" id="wt-note" placeholder='למשל: "לאחר אימון"'>
+        </div>
+        <button class="btn btn-w" style="margin-top:12px; background:linear-gradient(135deg,var(--accent),var(--accent-light-text,#15803d));" onclick="logWeight()">✓ שמור שקילה</button>
+        <div id="wt-msg" style="display:none; margin-top:10px; text-align:center; font-size:13px; font-weight:700; color:var(--accent);"></div>
+      </div>
+
+      <!-- Summary stats -->
+      <div style="display:flex; gap:10px; margin-bottom:14px;">
+        <div class="card" style="flex:1; text-align:center; padding:14px;">
+          <div style="font-size:22px; font-weight:800; color:var(--accent);" id="wt-current">-</div>
+          <div style="font-size:11px; color:var(--muted); margin-top:3px;">משקל נוכחי</div>
+        </div>
+        <div class="card" style="flex:1; text-align:center; padding:14px;">
+          <div style="font-size:22px; font-weight:800;" id="wt-change" style="color:var(--accent);">-</div>
+          <div style="font-size:11px; color:var(--muted); margin-top:3px;">שינוי כולל</div>
+        </div>
+        <div class="card" style="flex:1; text-align:center; padding:14px;">
+          <div style="font-size:22px; font-weight:800; color:var(--blue);" id="wt-entries-count">0</div>
+          <div style="font-size:11px; color:var(--muted); margin-top:3px;">שקילות</div>
+        </div>
+      </div>
+
+      <!-- Weight chart -->
+      <div class="card" style="padding:18px; margin-bottom:14px;" id="wt-chart-card">
+        <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:14px;">📈 גרף התקדמות</div>
+        <div id="wt-chart-wrap" style="overflow-x:auto;">
+          <div id="wt-chart-empty" style="text-align:center; padding:28px; color:var(--muted); font-size:13px;">
+            הוסף לפחות 2 שקילות לצפייה בגרף
+          </div>
+          <svg id="wt-svg" style="display:none; overflow:visible;" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+        <div style="display:flex; justify-content:center; gap:16px; margin-top:10px; font-size:11px; color:var(--muted);" id="wt-legend" style="display:none;">
+          <span>● <span style="color:var(--accent);">משקל בפועל</span></span>
+          <span>- - <span style="color:var(--dim);">יעד</span></span>
+        </div>
+      </div>
+
+      <!-- Weight log list -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <span style="font-size:14px; font-weight:700; color:var(--muted);">יומן שקילות</span>
+        <button class="btn btn-sm btn-ghost" onclick="if(confirm('למחוק את כל יומן המשקל?')) clearWeightLog()">🗑 נקה</button>
+      </div>
+      <div id="wt-list"></div>
     </div>
   </div>
 
@@ -432,6 +526,10 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
   <button class="nav-btn" id="nav-history" onclick="showScreen('history')">
     <span class="nav-icon">📅</span>
     <span class="nav-label">היסטוריה</span>
+  </button>
+  <button class="nav-btn" id="nav-weight" onclick="showScreen('weight')">
+    <span class="nav-icon">⚖️</span>
+    <span class="nav-label">משקל</span>
   </button>
   <button class="nav-btn" id="nav-settings" onclick="showScreen('settings')">
     <span class="nav-icon">👤</span>
@@ -467,8 +565,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
         <div style="font-size:13px;">מאכלים שתוסיף יישמרו כאן</div>
         <button class="btn btn-sm btn-blue" style="margin-top:14px;" onclick="setTab('text')">🔍 חפש מאכל ראשון</button>
       </div>
-      <div id="pantry-count" style="font-size:12px; color:var(--muted); margin-bottom:10px; display:none;"></div>
-      <div id="pantry-list" style="max-height:60vh; overflow-y:auto;"></div>
+      <div id="pantry-list"></div>
     </div>
 
     <!-- TEXT SEARCH TAB -->
@@ -636,8 +733,6 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 <!-- ════════════════════════════════════════════
      JAVASCRIPT
 ════════════════════════════════════════════ -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
 "use strict";
 
@@ -696,275 +791,104 @@ const FOODS = [
   {id:94,name:"אספרסו",cal:5,cat:"משקאות"},{id:95,name:"שוקו חם",cal:80,cat:"משקאות"},
   {id:96,name:"מיץ תפוזים",cal:45,cat:"משקאות"},{id:97,name:"קולה",cal:42,cat:"משקאות"},
   {id:98,name:"קולה זירו",cal:0,cat:"משקאות"},{id:99,name:"מים",cal:0,cat:"משקאות"},
-  {id:100,name:"שוקולד חלב",cal:535,cat:"ממתקים"},{id:101,name:"שוקולד מריר",cal:598,cat:"ממתקים"},
+  {id:100,name:"שוקולד חלב אליט",cal:535,cat:"שוקולד וחטיפים"},{id:101,name:"שוקולד מריר אליט",cal:545,cat:"שוקולד וחטיפים"},
   {id:102,name:"גלידת וניל",cal:207,cat:"ממתקים"},{id:103,name:"עוגת שוקולד",cal:371,cat:"ממתקים"},
-  {id:104,name:"קנאפה",cal:378,cat:"ממתקים"},{id:105,name:"פיצה גבינה (פרוסה)",cal:266,cat:"פסט פוד"},
+  {id:104,name:"קנאפה",cal:378,cat:"ממתקים"},
+  // ── שוקולד ישראלי ──
+  {id:115,name:"פסק זמן",cal:510,cat:"שוקולד וחטיפים"},
+  {id:116,name:"קיף קף",cal:512,cat:"שוקולד וחטיפים"},
+  {id:117,name:"מקופלת",cal:508,cat:"שוקולד וחטיפים"},
+  {id:118,name:"קרמבו",cal:320,cat:"שוקולד וחטיפים"},
+  {id:119,name:"שוקו בר",cal:468,cat:"שוקולד וחטיפים"},
+  {id:120,name:"אגוזי",cal:545,cat:"שוקולד וחטיפים"},
+  {id:121,name:"נוגט אליט",cal:452,cat:"שוקולד וחטיפים"},
+  {id:122,name:"שוקולד לבן אליט",cal:555,cat:"שוקולד וחטיפים"},
+  {id:123,name:"שוקולד ריזן (ענבים)",cal:470,cat:"שוקולד וחטיפים"},
+  {id:124,name:"שוקולד אגוזים אליט",cal:558,cat:"שוקולד וחטיפים"},
+  {id:125,name:"שוקולד מריר 70%",cal:572,cat:"שוקולד וחטיפים"},
+  {id:126,name:"שוקולד מריר 85%",cal:598,cat:"שוקולד וחטיפים"},
+  {id:127,name:'שוקולד פרווה אליט',cal:530,cat:"שוקולד וחטיפים"},
+  {id:128,name:"טבעול שוקולד",cal:420,cat:"שוקולד וחטיפים"},
+  // ── שוקולד בינלאומי (נמכר בישראל) ──
+  {id:129,name:"קינדר בואנו",cal:561,cat:"שוקולד וחטיפים"},
+  {id:130,name:"קינדר בר",cal:539,cat:"שוקולד וחטיפים"},
+  {id:131,name:"קינדר שוקו-בונס",cal:560,cat:"שוקולד וחטיפים"},
+  {id:132,name:"סניקרס",cal:488,cat:"שוקולד וחטיפים"},
+  {id:133,name:"טוויקס",cal:498,cat:"שוקולד וחטיפים"},
+  {id:134,name:"מארס",cal:449,cat:"שוקולד וחטיפים"},
+  {id:135,name:"מילקיווי",cal:449,cat:"שוקולד וחטיפים"},
+  {id:136,name:"קיט קט",cal:518,cat:"שוקולד וחטיפים"},
+  {id:137,name:"פררו רושה",cal:523,cat:"שוקולד וחטיפים"},
+  {id:138,name:"נוטלה",cal:539,cat:"שוקולד וחטיפים"},
+  {id:139,name:"מילקה",cal:530,cat:"שוקולד וחטיפים"},
+  {id:140,name:"טובלרון",cal:525,cat:"שוקולד וחטיפים"},
+  {id:141,name:"באונטי",cal:480,cat:"שוקולד וחטיפים"},
+  {id:142,name:"אחרי שמונה",cal:360,cat:"שוקולד וחטיפים"},
+  {id:143,name:"דיים (Daim)",cal:529,cat:"שוקולד וחטיפים"},
+  {id:144,name:"ראפאלו",cal:600,cat:"שוקולד וחטיפים"},
+  {id:145,name:"לייון בר",cal:480,cat:"שוקולד וחטיפים"},
+  {id:146,name:"אוריאו",cal:471,cat:"שוקולד וחטיפים"},
+  {id:147,name:"לוטוס בישקוף",cal:493,cat:"שוקולד וחטיפים"},
+  {id:148,name:"M&M's שוקולד",cal:500,cat:"שוקולד וחטיפים"},
+  {id:149,name:"M&M's בוטנים",cal:516,cat:"שוקולד וחטיפים"},
+  {id:150,name:"ריזס (Reese's)",cal:524,cat:"שוקולד וחטיפים"},{id:105,name:"פיצה גבינה (פרוסה)",cal:266,cat:"פסט פוד"},
   {id:106,name:"המבורגר",cal:295,cat:"פסט פוד"},{id:107,name:"צ'יפס",cal:312,cat:"פסט פוד"},
   {id:108,name:"שניצל מטוגן",cal:296,cat:"פסט פוד"},
-  // מאכלים אישיים — אביחי
-  {id:200,name:"אורז לבן מבושל (אביחי)",cal:130,cat:"אישי"},
-  {id:201,name:"במבה ביסלי מיקס",cal:510,cat:"אישי"},
-  {id:202,name:"בננה",cal:89,cat:"אישי"},
-  {id:203,name:"דגני טריקס",cal:400,cat:"אישי"},
-  {id:204,name:"דפי אורז יבשים",cal:340,cat:"אישי"},
-  {id:205,name:"חומוס סלט קנוי",cal:280,cat:"אישי"},
-  {id:206,name:"חזה עוף צלוי",cal:165,cat:"אישי"},
-  {id:207,name:"טונה במים מסונן",cal:110,cat:"אישי"},
-  {id:208,name:"כדורי פלאפל",cal:330,cat:"אישי"},
-  {id:209,name:"כריך פסטרמה עינת",cal:225,cat:"אישי"},
-  {id:210,name:"כריות תלמה",cal:450,cat:"אישי"},
-  {id:211,name:"לאפה",cal:280,cat:"אישי"},
-  {id:212,name:"לחם לבן",cal:250,cat:"אישי"},
-  {id:213,name:"לחמניה רגילה",cal:280,cat:"אישי"},
-  {id:214,name:"מאפינס",cal:380,cat:"אישי"},
-  {id:215,name:"מעדן חלבון GO",cal:63,cat:"אישי"},
-  {id:216,name:"ספרייט רגיל",cal:40,cat:"אישי"},
-  {id:217,name:"עוגיות שוקולד צ'יפס",cal:480,cat:"אישי"},
-  {id:218,name:"פיצה קפואה מעדנות",cal:260,cat:"אישי"},
-  {id:219,name:"פרגית צלויה",cal:210,cat:"אישי"},
-  {id:220,name:"שווארמה בשר מעורב",cal:260,cat:"אישי"},
-  {id:221,name:"שוקולד מריר פרה",cal:520,cat:"אישי"},
-  {id:222,name:"שוקולד חלב פרה",cal:530,cat:"אישי"},
-  {id:223,name:"שייק חלבון אבקה",cal:380,cat:"אישי"},
   {id:109,name:"קורנפלקס",cal:357,cat:"ארוחת בוקר"},{id:110,name:"דייסת שיבולת שועל",cal:71,cat:"ארוחת בוקר"},
   {id:111,name:"שמן זית",cal:884,cat:"שמנים"},{id:112,name:"חמאה",cal:717,cat:"שמנים"},
   {id:113,name:"מיונז",cal:680,cat:"שמנים"},{id:114,name:"מיונז קל",cal:340,cat:"שמנים"},
-  // ירקות נוספים
-  {id:115,name:"גמבה אדומה",cal:31,cat:"ירקות"},{id:116,name:"גמבה צהובה",cal:27,cat:"ירקות"},
-  {id:117,name:"גמבה ירוקה",cal:20,cat:"ירקות"},{id:118,name:"גמבה",cal:28,cat:"ירקות"},
-  {id:119,name:"עגבנייה שרי",cal:18,cat:"ירקות"},{id:120,name:"כרוב",cal:25,cat:"ירקות"},
-  {id:121,name:"כרוב סגול",cal:27,cat:"ירקות"},{id:122,name:"סלרי",cal:16,cat:"ירקות"},
-  {id:123,name:"לפת",cal:28,cat:"ירקות"},{id:124,name:"שום",cal:149,cat:"ירקות"},
-  {id:125,name:"בצל ירוק",cal:32,cat:"ירקות"},{id:126,name:"צנון",cal:16,cat:"ירקות"},
-  {id:127,name:"אפונה טרייה",cal:81,cat:"ירקות"},{id:128,name:"תרד טרי",cal:23,cat:"ירקות"},
-  {id:129,name:"עלי רוקט",cal:25,cat:"ירקות"},{id:130,name:"מלפפון חמוץ",cal:12,cat:"ירקות"},
-  {id:131,name:"פטרוזיליה",cal:36,cat:"ירקות"},{id:132,name:"כוסברה",cal:23,cat:"ירקות"},
-  // מאפים ישראליים
-  {id:150,name:"בורקס גבינה",cal:320,cat:"מאפים"},{id:151,name:"בורקס תפוח אדמה",cal:280,cat:"מאפים"},
-  {id:152,name:"בורקס פטריות",cal:270,cat:"מאפים"},{id:153,name:"בורקס תרד",cal:260,cat:"מאפים"},
-  {id:154,name:"בורקס בשר",cal:310,cat:"מאפים"},{id:155,name:"בורקס זיתים",cal:290,cat:"מאפים"},
-  {id:156,name:"רוגלך שוקולד",cal:420,cat:"מאפים"},{id:157,name:"רוגלך קינמון",cal:400,cat:"מאפים"},
-  {id:158,name:"רוגלך גבינה",cal:380,cat:"מאפים"},{id:159,name:"רוגלך מרמלדה",cal:390,cat:"מאפים"},
-  {id:160,name:"קרואסון חמאה",cal:406,cat:"מאפים"},{id:161,name:"קרואסון שוקולד",cal:430,cat:"מאפים"},
-  {id:162,name:"קרואסון גבינה",cal:390,cat:"מאפים"},{id:163,name:"דנית גבינה",cal:350,cat:"מאפים"},
-  {id:164,name:"דנית שוקולד",cal:370,cat:"מאפים"},{id:165,name:"עוגיית חמאה",cal:450,cat:"מאפים"},
-  {id:166,name:"עוגיית שיבולת שועל",cal:400,cat:"מאפים"},{id:167,name:"מאפין שוקולד",cal:380,cat:"מאפים"},
-  {id:168,name:"מאפין אוכמניות",cal:360,cat:"מאפים"},{id:169,name:"עוגת גבינה",cal:320,cat:"מאפים"},
-  {id:170,name:"עוגת תפוחים",cal:290,cat:"מאפים"},{id:171,name:"עוגת שיש",cal:380,cat:"מאפים"},
-  {id:172,name:"עוגת לימון",cal:340,cat:"מאפים"},{id:173,name:"בראוניז",cal:410,cat:"מאפים"},
-  {id:174,name:"חלה",cal:280,cat:"מאפים"},{id:175,name:"לחם בצל",cal:270,cat:"מאפים"},
-  {id:176,name:"בייגל",cal:270,cat:"מאפים"},{id:177,name:"לחם שחור",cal:220,cat:"מאפים"},
-  {id:178,name:"לחמניית שומשום",cal:290,cat:"מאפים"},{id:179,name:"סוזמה",cal:430,cat:"מאפים"},
-  // שוקולדי קינדר
-  {id:230,name:"קינדר שוקולד",cal:550,cat:"קינדר"},{id:231,name:"קינדר בואנו",cal:541,cat:"קינדר"},
-  {id:232,name:"קינדר בואנו לבן",cal:558,cat:"קינדר"},{id:233,name:"קינדר מקסי",cal:544,cat:"קינדר"},
-  {id:234,name:"קינדר ביצת הפתעה",cal:510,cat:"קינדר"},{id:235,name:"קינדר דלייס",cal:387,cat:"קינדר"},
-  {id:236,name:"קינדר פינגי",cal:490,cat:"קינדר"},{id:237,name:"קינדר היפי",cal:504,cat:"קינדר"},
-  {id:238,name:"קינדר קאנטרי",cal:519,cat:"קינדר"},{id:239,name:"קינדר סנדוויץ'",cal:522,cat:"קינדר"},
-  {id:240,name:"קינדר מיני",cal:545,cat:"קינדר"},{id:241,name:"קינדר ג'וי",cal:510,cat:"קינדר"},
-  {id:242,name:"פררו רושה",cal:523,cat:"קינדר"},{id:243,name:"נוטלה",cal:539,cat:"קינדר"},
-  // חטיפים ישראליים
-  {id:250,name:"במבה",cal:535,cat:"חטיפים ישראליים"},{id:251,name:"במבה נוגט",cal:520,cat:"חטיפים ישראליים"},
-  {id:252,name:"ביסלי גריל",cal:490,cat:"חטיפים ישראליים"},{id:253,name:"ביסלי פיצה",cal:488,cat:"חטיפים ישראליים"},
-  {id:254,name:"ביסלי בצל",cal:485,cat:"חטיפים ישראליים"},{id:255,name:"ביסלי עוף",cal:487,cat:"חטיפים ישראליים"},
-  {id:256,name:"ביסלי ברביקיו",cal:490,cat:"חטיפים ישראליים"},{id:257,name:"מיקס במבה ביסלי",cal:510,cat:"חטיפים ישראליים"},
-  {id:258,name:"שוקי",cal:440,cat:"חטיפים ישראליים"},{id:259,name:"פרינגלס",cal:536,cat:"חטיפים ישראליים"},
-  {id:260,name:"ציטוס",cal:520,cat:"חטיפים ישראליים"},{id:261,name:"ציטוס ביף",cal:515,cat:"חטיפים ישראליים"},
-  {id:262,name:"טוסטיטוס",cal:480,cat:"חטיפים ישראליים"},{id:263,name:"דורינגס",cal:500,cat:"חטיפים ישראליים"},
-  {id:264,name:"חיטים",cal:370,cat:"חטיפים ישראליים"},{id:265,name:"עפיפון",cal:390,cat:"חטיפים ישראליים"},
-  {id:266,name:"טיב טעם ביצה",cal:480,cat:"חטיפים ישראליים"},{id:267,name:"כדורי גבינה",cal:510,cat:"חטיפים ישראליים"},
-  {id:268,name:"קרקרים",cal:430,cat:"חטיפים ישראליים"},{id:269,name:"קרקרים מלוחים",cal:440,cat:"חטיפים ישראליים"},
-  {id:270,name:"פופקורן מלוח",cal:375,cat:"חטיפים ישראליים"},{id:271,name:"פופקורן חמאה",cal:400,cat:"חטיפים ישראליים"},
-  {id:272,name:"פופקורן קרמל",cal:430,cat:"חטיפים ישראליים"},{id:273,name:"אגוזים מעורבים",cal:600,cat:"חטיפים ישראליים"},
-  {id:274,name:"קשיו",cal:553,cat:"חטיפים ישראליים"},{id:275,name:"פיסטוק",cal:560,cat:"חטיפים ישראליים"},
-  {id:276,name:"גרעיני דלעת",cal:559,cat:"חטיפים ישראליים"},{id:277,name:"גרעיני חמנייה",cal:584,cat:"חטיפים ישראליים"},
-  {id:278,name:"חלבה שומשום",cal:469,cat:"חטיפים ישראליים"},{id:279,name:"חלבה שוקולד",cal:490,cat:"חטיפים ישראליים"},
-  // בשר — כל הסוגים
-  {id:300,name:"סטייק אנטריקוט",cal:271,cat:"בשר"},{id:301,name:"סטייק פילה",cal:220,cat:"בשר"},
-  {id:302,name:"סטייק ריב איי",cal:290,cat:"בשר"},{id:303,name:"סטייק טי-בון",cal:280,cat:"בשר"},
-  {id:304,name:"קבב בקר",cal:260,cat:"בשר"},{id:305,name:"קבב טלה",cal:280,cat:"בשר"},
-  {id:306,name:"קבב עוף",cal:185,cat:"בשר"},{id:307,name:"קבב מעורב",cal:250,cat:"בשר"},
-  {id:308,name:"המבורגר בקר",cal:295,cat:"בשר"},{id:309,name:"המבורגר עוף",cal:220,cat:"בשר"},
-  {id:310,name:"המבורגר הודו",cal:200,cat:"בשר"},{id:311,name:"נקניקיות בקר",cal:290,cat:"בשר"},
-  {id:312,name:"נקניקיות עוף",cal:223,cat:"בשר"},{id:313,name:"נקניקיות הודו",cal:200,cat:"בשר"},
-  {id:314,name:"נקניק מעושן",cal:310,cat:"בשר"},{id:315,name:"שישליק",cal:250,cat:"בשר"},
-  {id:316,name:"צלעות בקר",cal:290,cat:"בשר"},{id:317,name:"צלעות טלה",cal:295,cat:"בשר"},
-  {id:318,name:"כתף טלה",cal:235,cat:"בשר"},{id:319,name:"שייטל",cal:180,cat:"בשר"},
-  {id:320,name:"בשר טחון בקר",cal:250,cat:"בשר"},{id:321,name:"בשר טחון עוף",cal:170,cat:"בשר"},
-  {id:322,name:"בשר טחון הודו",cal:155,cat:"בשר"},{id:323,name:"קציצות בקר",cal:235,cat:"בשר"},
-  {id:324,name:"קציצות עוף",cal:190,cat:"בשר"},{id:325,name:"שניצל עוף מטוגן",cal:250,cat:"בשר"},
-  {id:326,name:"שניצל עוף בתנור",cal:200,cat:"בשר"},{id:327,name:"שניצל הודו",cal:195,cat:"בשר"},
-  {id:328,name:"פרגיות",cal:210,cat:"בשר"},{id:329,name:"כרעיים עוף",cal:209,cat:"בשר"},
-  {id:330,name:"כנפיים עוף",cal:230,cat:"בשר"},{id:331,name:"חזה עוף",cal:165,cat:"בשר"},
-  {id:332,name:"ירך עוף",cal:195,cat:"בשר"},{id:333,name:"עוף שלם צלוי",cal:215,cat:"בשר"},
-  {id:334,name:"כבד עוף",cal:172,cat:"בשר"},{id:335,name:"כבד בקר",cal:135,cat:"בשר"},
-  {id:336,name:"פסטרמה עוף",cal:110,cat:"בשר"},{id:337,name:"פסטרמה הודו",cal:105,cat:"בשר"},
-  {id:338,name:"שוורמה עוף",cal:175,cat:"בשר"},{id:339,name:"שוורמה בקר",cal:220,cat:"בשר"},
-  {id:340,name:"שוורמה מעורב",cal:200,cat:"בשר"},{id:341,name:"לחמעג'ין",cal:250,cat:"בשר"},
-  // סלטים, ממרחים ורטבים
-  {id:350,name:"מטבוחה",cal:45,cat:"סלטים וממרחים"},{id:351,name:"חומוס עם טחינה",cal:185,cat:"סלטים וממרחים"},
-  {id:352,name:"טחינה גולמית",cal:595,cat:"סלטים וממרחים"},{id:353,name:"טחינה מוכנה",cal:320,cat:"סלטים וממרחים"},
-  {id:354,name:"כרוב במיונז (קולסלו)",cal:150,cat:"סלטים וממרחים"},{id:355,name:"אריסה",cal:65,cat:"סלטים וממרחים"},
-  {id:356,name:"סלט ביצים במיונז",cal:180,cat:"סלטים וממרחים"},{id:357,name:"סלט טונה במיונז",cal:160,cat:"סלטים וממרחים"},
-  {id:358,name:"סלט עוף במיונז",cal:170,cat:"סלטים וממרחים"},{id:359,name:"סלט גזר מרוקאי",cal:80,cat:"סלטים וממרחים"},
-  {id:360,name:"סלט חצילים שרוף",cal:85,cat:"סלטים וממרחים"},{id:361,name:"סלט פלפלים קלויים",cal:60,cat:"סלטים וממרחים"},
-  {id:362,name:"סלט עגבניות ובצל",cal:35,cat:"סלטים וממרחים"},{id:363,name:"סלט כרוב סגול",cal:50,cat:"סלטים וממרחים"},
-  {id:364,name:"סלט לחאם",cal:280,cat:"סלטים וממרחים"},{id:365,name:"סלט שעועית לבנה",cal:130,cat:"סלטים וממרחים"},
-  {id:366,name:"סלט עדשים",cal:120,cat:"סלטים וממרחים"},{id:367,name:"סלט קינואה",cal:140,cat:"סלטים וממרחים"},
-  {id:368,name:"גואקמולה",cal:155,cat:"סלטים וממרחים"},{id:369,name:"סלט ירוק עם גבינה",cal:90,cat:"סלטים וממרחים"},
-  // רטבים ומיונזים
-  {id:370,name:"מיונז",cal:680,cat:"רטבים"},{id:371,name:"מיונז קל",cal:340,cat:"רטבים"},
-  {id:372,name:"קטשופ",cal:100,cat:"רטבים"},{id:373,name:"חרדל",cal:66,cat:"רטבים"},
-  {id:374,name:"רוטב אלף האיים",cal:380,cat:"רטבים"},{id:375,name:"רוטב קיסר",cal:360,cat:"רטבים"},
-  {id:376,name:"רוטב רנץ'",cal:320,cat:"רטבים"},{id:377,name:"רוטב בלסמי",cal:90,cat:"רטבים"},
-  {id:378,name:"רוטב סויה",cal:53,cat:"רטבים"},{id:379,name:"סרירצ'ה",cal:93,cat:"רטבים"},
-  {id:380,name:"חומוס טחינה (ממרח)",cal:170,cat:"רטבים"},{id:381,name:"פסטו",cal:350,cat:"רטבים"},
-  {id:382,name:"רוטב עגבניות (מרינרה)",cal:65,cat:"רטבים"},{id:383,name:"רוטב ברביקיו",cal:170,cat:"רטבים"},
-  {id:384,name:"חמוציות",cal:151,cat:"רטבים"},{id:385,name:"רוטב טריאקי",cal:130,cat:"רטבים"},
-  {id:386,name:"שמן זית ולימון",cal:300,cat:"רטבים"},{id:387,name:"חומץ בלסמי",cal:88,cat:"רטבים"},
-  // טורטיה ורפות
-  {id:390,name:"טורטיה קמח (בינונית)",cal:218,cat:"טורטיה ולחמים"},
-  {id:391,name:"טורטיה קמח (גדולה)",cal:240,cat:"טורטיה ולחמים"},
-  {id:392,name:"טורטיה תירס",cal:160,cat:"טורטיה ולחמים"},
-  {id:393,name:"טורטיה מלאה",cal:200,cat:"טורטיה ולחמים"},
-  {id:394,name:"טורטיה ספינאץ'",cal:195,cat:"טורטיה ולחמים"},
-  {id:395,name:"לאפה (עבה)",cal:290,cat:"טורטיה ולחמים"},
-  {id:396,name:"לאפה (דקה)",cal:250,cat:"טורטיה ולחמים"},
-  {id:397,name:"רפה תימנית",cal:270,cat:"טורטיה ולחמים"},
-  {id:398,name:"פיתה קטנה",cal:150,cat:"טורטיה ולחמים"},
-  {id:399,name:"פיתה גדולה",cal:265,cat:"טורטיה ולחמים"},
-  {id:400,name:"פיתה מלאה",cal:240,cat:"טורטיה ולחמים"},
-  // ═══ ארומה ═══
-  {id:410,name:"ארומה — קפה הפוך",cal:120,cat:"ארומה"},{id:411,name:"ארומה — לאטה",cal:150,cat:"ארומה"},
-  {id:412,name:"ארומה — קפוצ'ינו",cal:110,cat:"ארומה"},{id:413,name:"ארומה — שייק שוקולד",cal:380,cat:"ארומה"},
-  {id:414,name:"ארומה — כריך טונה",cal:380,cat:"ארומה"},{id:415,name:"ארומה — כריך גבינות",cal:420,cat:"ארומה"},
-  {id:416,name:"ארומה — בייגל שמנת",cal:450,cat:"ארומה"},{id:417,name:"ארומה — סלט ירוק",cal:180,cat:"ארומה"},
-  {id:418,name:"ארומה — קרואסון",cal:380,cat:"ארומה"},{id:419,name:"ארומה — מאפין",cal:420,cat:"ארומה"},
-  // ═══ BBB ═══
-  {id:420,name:"BBB — המבורגר קלאסי",cal:650,cat:"BBB"},{id:421,name:"BBB — המבורגר כפול",cal:890,cat:"BBB"},
-  {id:422,name:"BBB — צ'יפס בינוני",cal:400,cat:"BBB"},{id:423,name:"BBB — צ'יפס גדול",cal:530,cat:"BBB"},
-  {id:424,name:"BBB — קולסלו",cal:180,cat:"BBB"},{id:425,name:"BBB — עוף פריך",cal:480,cat:"BBB"},
-  {id:426,name:"BBB — שייק וניל",cal:520,cat:"BBB"},{id:427,name:"BBB — שייק שוקולד",cal:560,cat:"BBB"},
-  {id:428,name:"BBB — ביצה עין",cal:90,cat:"BBB"},{id:429,name:"BBB — עגבנייה פרוסה",cal:15,cat:"BBB"},
-  // ═══ מקדונלד'ס ═══
-  {id:430,name:"מקדונלד'ס — ביג מק",cal:563,cat:"מקדונלד'ס"},{id:431,name:"מקדונלד'ס — מק צ'יקן",cal:490,cat:"מקדונלד'ס"},
-  {id:432,name:"מקדונלד'ס — צ'יזבורגר",cal:303,cat:"מקדונלד'ס"},{id:433,name:"מקדונלד'ס — צ'יפס בינוני",cal:337,cat:"מקדונלד'ס"},
-  {id:434,name:"מקדונלד'ס — צ'יפס גדול",cal:444,cat:"מקדונלד'ס"},{id:435,name:"מקדונלד'ס — מקנאגטס 6",cal:280,cat:"מקדונלד'ס"},
-  {id:436,name:"מקדונלד'ס — מקנאגטס 9",cal:420,cat:"מקדונלד'ס"},{id:437,name:"מקדונלד'ס — מק ריב",cal:500,cat:"מקדונלד'ס"},
-  {id:438,name:"מקדונלד'ס — פילה אוו פיש",cal:390,cat:"מקדונלד'ס"},{id:439,name:"מקדונלד'ס — מקפלורי",cal:340,cat:"מקדונלד'ס"},
-  {id:440,name:"מקדונלד'ס — קוקה קולה בינוני",cal:180,cat:"מקדונלד'ס"},{id:441,name:"מקדונלד'ס — שייק תות",cal:490,cat:"מקדונלד'ס"},
-  // ═══ פיצה האט ═══
-  {id:450,name:"פיצה האט — פרוסה מרגריטה",cal:250,cat:"פיצה האט"},{id:451,name:"פיצה האט — פרוסה פפרוני",cal:290,cat:"פיצה האט"},
-  {id:452,name:"פיצה האט — פרוסה ירקות",cal:220,cat:"פיצה האט"},{id:453,name:"פיצה האט — פרוסה עוף",cal:260,cat:"פיצה האט"},
-  {id:454,name:"פיצה האט — פרוסה BBQ",cal:280,cat:"פיצה האט"},{id:455,name:"פיצה האט — לחם שום",cal:180,cat:"פיצה האט"},
-  {id:456,name:"פיצה האט — פסטה ברוטב עגבניות",cal:380,cat:"פיצה האט"},{id:457,name:"פיצה האט — פסטה קרבונרה",cal:520,cat:"פיצה האט"},
-  {id:458,name:"פיצה האט — כנפיים",cal:280,cat:"פיצה האט"},{id:459,name:"פיצה האט — שוקולבה",cal:420,cat:"פיצה האט"},
-  // ═══ המקסיקני ═══
-  {id:460,name:"המקסיקני — בוריטו עוף",cal:580,cat:"המקסיקני"},{id:461,name:"המקסיקני — בוריטו בקר",cal:620,cat:"המקסיקני"},
-  {id:462,name:"המקסיקני — טאקו עוף",cal:280,cat:"המקסיקני"},{id:463,name:"המקסיקני — טאקו בקר",cal:310,cat:"המקסיקני"},
-  {id:464,name:"המקסיקני — קסדיה עוף",cal:480,cat:"המקסיקני"},{id:465,name:"המקסיקני — נאצ'וס",cal:520,cat:"המקסיקני"},
-  {id:466,name:"המקסיקני — גואקמולה",cal:150,cat:"המקסיקני"},{id:467,name:"המקסיקני — סלסה",cal:40,cat:"המקסיקני"},
-  {id:468,name:"המקסיקני — פאחיטה עוף",cal:450,cat:"המקסיקני"},{id:469,name:"המקסיקני — בול עוף",cal:520,cat:"המקסיקני"},
-  // ═══ סושי ═══
-  {id:470,name:"סושי — מאקי סלמון (8 יח')",cal:280,cat:"סושי"},{id:471,name:"סושי — מאקי טונה (8 יח')",cal:260,cat:"סושי"},
-  {id:472,name:"סושי — ניגירי סלמון (2 יח')",cal:130,cat:"סושי"},{id:473,name:"סושי — ניגירי טונה (2 יח')",cal:120,cat:"סושי"},
-  {id:474,name:"סושי — קליפורניה רול (8 יח')",cal:310,cat:"סושי"},{id:475,name:"סושי — ספייסי טונה (8 יח')",cal:290,cat:"סושי"},
-  {id:476,name:"סושי — טמפורה שריפס (8 יח')",cal:380,cat:"סושי"},{id:477,name:"סושי — ראמן עוף",cal:450,cat:"סושי"},
-  {id:478,name:"סושי — אדממה",cal:120,cat:"סושי"},{id:479,name:"סושי — מיסו סופ",cal:40,cat:"סושי"},
-  // ═══ מוזס ═══
-  {id:480,name:"מוזס — המבורגר קלאסי",cal:700,cat:"מוזס"},{id:481,name:"מוזס — המבורגר עם גבינה",cal:780,cat:"מוזס"},
-  {id:482,name:"מוזס — צ'יפס",cal:420,cat:"מוזס"},{id:483,name:"מוזס — שייק שוקולד",cal:600,cat:"מוזס"},
-  {id:484,name:"מוזס — סלט קיסר",cal:350,cat:"מוזס"},{id:485,name:"מוזס — כנפיים",cal:480,cat:"מוזס"},
-  // ═══ בית הפול ═══
-  {id:490,name:"בית הפול — פול מדמס",cal:180,cat:"בית הפול"},{id:491,name:"בית הפול — פול בשמן",cal:220,cat:"בית הפול"},
-  {id:492,name:"בית הפול — פיתה עם פול",cal:380,cat:"בית הפול"},{id:493,name:"בית הפול — ביצה קשה",cal:80,cat:"בית הפול"},
-  {id:494,name:"בית הפול — סלט ישראלי",cal:60,cat:"בית הפול"},{id:495,name:"בית הפול — טחינה",cal:180,cat:"בית הפול"},
-  // ═══ שווארמה (שכונתית) ═══
-  {id:500,name:"שווארמה — בפיתה",cal:550,cat:"שווארמה"},{id:501,name:"שווארמה — בלאפה",cal:620,cat:"שווארמה"},
-  {id:502,name:"שווארמה — בצלחת",cal:450,cat:"שווארמה"},{id:503,name:"שווארמה — צ'יפס",cal:380,cat:"שווארמה"},
-  {id:504,name:"שווארמה — חומוס",cal:200,cat:"שווארמה"},{id:505,name:"שווארמה — סלט כרוב",cal:80,cat:"שווארמה"},
-  {id:506,name:"שווארמה עוף בפיתה",cal:480,cat:"שווארמה"},{id:507,name:"שווארמה מעורב בלאפה",cal:680,cat:"שווארמה"},
-  // ═══ קה פאסה ═══
-  {id:510,name:"קה פאסה — בוריטו עוף",cal:560,cat:"קה פאסה"},{id:511,name:"קה פאסה — טאקו",cal:270,cat:"קה פאסה"},
-  {id:512,name:"קה פאסה — נאצ'וס",cal:500,cat:"קה פאסה"},{id:513,name:"קה פאסה — קסדיה",cal:460,cat:"קה פאסה"},
-  // ═══ קמפאי ═══
-  {id:520,name:"קמפאי — מאקי (8 יח')",cal:290,cat:"קמפאי"},{id:521,name:"קמפאי — טמפורה",cal:370,cat:"קמפאי"},
-  {id:522,name:"קמפאי — ראמן",cal:480,cat:"קמפאי"},{id:523,name:"קמפאי — פד תאי",cal:420,cat:"קמפאי"},
-  {id:524,name:"קמפאי — דים סאם",cal:280,cat:"קמפאי"},
-  // ═══ בגט / בגטריה ═══
-  {id:530,name:"בגט — עם גבינה וירקות",cal:420,cat:"בגטריה"},{id:531,name:"בגט — עם טונה",cal:460,cat:"בגטריה"},
-  {id:532,name:"בגט — עם שוקולד",cal:480,cat:"בגטריה"},{id:533,name:"בגט — עם חמאה",cal:390,cat:"בגטריה"},
-  {id:534,name:"בגט — עם פסטרמה",cal:430,cat:"בגטריה"},
-  // ═══ דגני בוקר ═══
-  {id:540,name:"כריות נוגט תלמה",cal:450,cat:"דגני בוקר"},{id:541,name:"כריות שוקולד תלמה",cal:440,cat:"דגני בוקר"},
-  {id:542,name:"כריות דבש תלמה",cal:420,cat:"דגני בוקר"},{id:543,name:"כריות תות תלמה",cal:430,cat:"דגני בוקר"},
-  {id:544,name:"קורנפלקס",cal:357,cat:"דגני בוקר"},{id:545,name:"קורנפלקס שוקולד",cal:380,cat:"דגני בוקר"},
-  {id:546,name:"קורנפלקס דבש",cal:375,cat:"דגני בוקר"},{id:547,name:"פרוסטיס",cal:370,cat:"דגני בוקר"},
-  {id:548,name:"קוקו פאפס",cal:385,cat:"דגני בוקר"},{id:549,name:"פרינסס",cal:390,cat:"דגני בוקר"},
-  {id:550,name:"טריקס",cal:400,cat:"דגני בוקר"},{id:551,name:"לאקי צ'ארמס",cal:390,cat:"דגני בוקר"},
-  {id:552,name:"קפטן קראנץ'",cal:395,cat:"דגני בוקר"},{id:553,name:"ריס פאפס",cal:380,cat:"דגני בוקר"},
-  {id:554,name:"שיבולת שועל",cal:71,cat:"דגני בוקר"},{id:555,name:"גרנולה",cal:471,cat:"דגני בוקר"},
-  {id:556,name:"גרנולה שוקולד",cal:490,cat:"דגני בוקר"},{id:557,name:"גרנולה פירות",cal:460,cat:"דגני בוקר"},
-  {id:558,name:"מוסלי",cal:353,cat:"דגני בוקר"},{id:559,name:"All Bran",cal:270,cat:"דגני בוקר"},
-  {id:560,name:"Special K",cal:350,cat:"דגני בוקר"},{id:561,name:"Special K פירות יער",cal:360,cat:"דגני בוקר"},
-  {id:562,name:"חיטים נפוחות",cal:320,cat:"דגני בוקר"},{id:563,name:"אורז נפוח",cal:380,cat:"דגני בוקר"},
-  {id:564,name:"פצפוצי חיטה",cal:340,cat:"דגני בוקר"},{id:565,name:"קוואקר",cal:68,cat:"דגני בוקר"},
-  // ═══ MY PROTEIN — אבקות חלבון ═══
-  {id:570,name:"MP — Impact Whey Protein שוקולד",cal:103,cat:"MY PROTEIN"},
-  {id:571,name:"MP — Impact Whey Protein וניל",cal:104,cat:"MY PROTEIN"},
-  {id:572,name:"MP — Impact Whey Protein תות",cal:102,cat:"MY PROTEIN"},
-  {id:573,name:"MP — Impact Whey Protein קוקי קרים",cal:105,cat:"MY PROTEIN"},
-  {id:574,name:"MP — Impact Whey Protein שוקולד בוטנים",cal:107,cat:"MY PROTEIN"},
-  {id:575,name:"MP — Impact Whey Isolate שוקולד",cal:95,cat:"MY PROTEIN"},
-  {id:576,name:"MP — Impact Whey Isolate וניל",cal:94,cat:"MY PROTEIN"},
-  {id:577,name:"MP — Clear Whey Isolate",cal:77,cat:"MY PROTEIN"},
-  {id:578,name:"MP — Vegan Protein שוקולד",cal:100,cat:"MY PROTEIN"},
-  {id:579,name:"MP — Vegan Protein וניל",cal:98,cat:"MY PROTEIN"},
-  {id:580,name:"MP — Total Protein שוקולד",cal:115,cat:"MY PROTEIN"},
-  {id:581,name:"MP — Casein שוקולד",cal:113,cat:"MY PROTEIN"},
-  {id:582,name:"MP — Casein וניל",cal:112,cat:"MY PROTEIN"},
-  {id:583,name:"MP — Weight Gainer שוקולד",cal:373,cat:"MY PROTEIN"},
-  {id:584,name:"MP — Creatine (5 גרם)",cal:0,cat:"MY PROTEIN"},
-  {id:585,name:"MP — BCAA (10 גרם)",cal:10,cat:"MY PROTEIN"},
-  {id:586,name:"MP — Pre Workout",cal:25,cat:"MY PROTEIN"},
-  {id:587,name:"MP — Protein Bar שוקולד",cal:210,cat:"MY PROTEIN"},
-  {id:588,name:"MP — Protein Bar קרמל",cal:208,cat:"MY PROTEIN"},
-  {id:589,name:"MP — Protein Cookie",cal:320,cat:"MY PROTEIN"},
-  {id:590,name:"MP — Layered Bar",cal:295,cat:"MY PROTEIN"},
-  {id:591,name:"MP — Protein Pancake (100 גרם)",cal:350,cat:"MY PROTEIN"},
-  // ═══ גומבה — מסעדה איטלקית ═══
-  {id:600,name:"גומבה — פסטה ברוטב עגבניות",cal:380,cat:"גומבה"},{id:601,name:"גומבה — פסטה קרבונרה",cal:520,cat:"גומבה"},
-  {id:602,name:"גומבה — פסטה בולונז",cal:480,cat:"גומבה"},{id:603,name:"גומבה — פסטה פסטו",cal:450,cat:"גומבה"},
-  {id:604,name:"גומבה — פסטה ים תיכונית",cal:420,cat:"גומבה"},{id:605,name:"גומבה — ריזוטו פטריות",cal:390,cat:"גומבה"},
-  {id:606,name:"גומבה — ריזוטו ים תיכוני",cal:410,cat:"גומבה"},{id:607,name:"גומבה — פיצה מרגריטה",cal:240,cat:"גומבה"},
-  {id:608,name:"גומבה — פיצה פרוולה",cal:280,cat:"גומבה"},{id:609,name:"גומבה — פיצה ים תיכונית",cal:260,cat:"גומבה"},
-  {id:610,name:"גומבה — פיצה ירקות",cal:220,cat:"גומבה"},{id:611,name:"גומבה — סלט קיסר",cal:320,cat:"גומבה"},
-  {id:612,name:"גומבה — סלט קפרזה",cal:280,cat:"גומבה"},{id:613,name:"גומבה — מרק מינסטרונה",cal:180,cat:"גומבה"},
-  {id:614,name:"גומבה — לחם שום",cal:200,cat:"גומבה"},{id:615,name:"גומבה — לחם פוקצ'ה",cal:230,cat:"גומבה"},
-  {id:616,name:"גומבה — טירמיסו",cal:380,cat:"גומבה"},{id:617,name:"גומבה — פנקוטה",cal:320,cat:"גומבה"},
-  {id:618,name:"גומבה — גלידת וניל",cal:200,cat:"גומבה"},{id:619,name:"גומבה — לזניה בשר",cal:450,cat:"גומבה"},
-  {id:620,name:"גומבה — לזניה ירקות",cal:380,cat:"גומבה"},{id:621,name:"גומבה — גנוצ'י ברוטב עגבניות",cal:350,cat:"גומבה"},
-  // ═══ מאכלים אישיים — אביחי ═══
-  {id:200,name:"במבה ביסלי מיקס",cal:510,cat:"אישי"},
-  {id:201,name:"דגני טריקס",cal:400,cat:"אישי"},
-  {id:202,name:"דפי אורז יבשים",cal:340,cat:"אישי"},
-  {id:203,name:"חומוס סלט קנוי",cal:280,cat:"אישי"},
-  {id:204,name:"כדורי פלאפל",cal:330,cat:"אישי"},
-  {id:205,name:"כריך פסטרמה עינת",cal:225,cat:"אישי"},
-  {id:206,name:"כריות תלמה",cal:450,cat:"אישי"},
-  {id:207,name:"לאפה",cal:280,cat:"אישי"},
-  {id:208,name:"מאפינס",cal:380,cat:"אישי"},
-  {id:209,name:"מעדן חלבון GO",cal:63,cat:"אישי"},
-  {id:210,name:"ספרייט רגיל",cal:40,cat:"אישי"},
-  {id:211,name:"עוגיות שוקולד צ'יפס",cal:480,cat:"אישי"},
-  {id:212,name:"פיצה קפואה מעדנות",cal:260,cat:"אישי"},
-  {id:213,name:"פרגית צלויה",cal:210,cat:"אישי"},
-  {id:214,name:"שווארמה בשר מעורב",cal:260,cat:"אישי"},
-  {id:215,name:"שוקולד מריר פרה",cal:520,cat:"אישי"},
-  {id:216,name:"שוקולד חלב פרה",cal:530,cat:"אישי"},
-  {id:217,name:"שייק חלבון אבקה",cal:380,cat:"אישי"},
-  {id:218,name:"שניצל בתנור",cal:200,cat:"אישי"},
 ];
+
+// ══════════════════════════════════════════
+// MACROS DATABASE (prot/carb/fat per 100g)
+// ══════════════════════════════════════════
+const MACROS = {
+  1:{p:8,c:20,f:6},2:{p:8,c:18,f:9},3:{p:17,c:22,f:53},4:{p:3,c:9,f:4},5:{p:2,c:8,f:14},
+  6:{p:1,c:7,f:2},7:{p:2,c:8,f:4},8:{p:1,c:10,f:2},9:{p:2,c:8,f:6},10:{p:3,c:24,f:3},
+  11:{p:8,c:24,f:11},12:{p:18,c:5,f:9},13:{p:16,c:4,f:14},14:{p:7,c:8,f:7},15:{p:8,c:18,f:9},
+  16:{p:8,c:30,f:18},17:{p:6,c:33,f:14},18:{p:9,c:22,f:9},19:{p:7,c:38,f:20},20:{p:6,c:38,f:13},
+  21:{p:9,c:52,f:2},22:{p:8,c:44,f:2},23:{p:8,c:53,f:2},24:{p:8,c:48,f:3},25:{p:9,c:55,f:3},
+  26:{p:8,c:43,f:22},27:{p:9,c:48,f:2},28:{p:3,c:28,f:0},29:{p:2,c:23,f:1},30:{p:5,c:25,f:1},
+  31:{p:4,c:23,f:0},32:{p:3,c:18,f:0},33:{p:4,c:21,f:2},
+  34:{p:10,c:4,f:5},35:{p:10,c:4,f:9},36:{p:12,c:3,f:5},37:{p:26,c:1,f:28},38:{p:15,c:2,f:20},
+  39:{p:14,c:4,f:21},40:{p:3,c:5,f:3},41:{p:4,c:5,f:0},42:{p:3,c:5,f:3},43:{p:3,c:5,f:3},44:{p:3,c:4,f:19},
+  45:{p:13,c:1,f:11},46:{p:13,c:1,f:15},47:{p:10,c:2,f:12},48:{p:6,c:0,f:7},
+  49:{p:31,c:0,f:4},50:{p:25,c:0,f:12},51:{p:20,c:15,f:12},52:{p:20,c:0,f:18},
+  53:{p:22,c:0,f:20},54:{p:16,c:8,f:15},55:{p:14,c:4,f:17},56:{p:25,c:1,f:6},
+  57:{p:22,c:0,f:13},58:{p:26,c:0,f:1},59:{p:25,c:0,f:11},60:{p:25,c:0,f:5},61:{p:18,c:8,f:10},
+  62:{p:1,c:4,f:0},63:{p:1,c:3,f:0},64:{p:1,c:7,f:0},65:{p:1,c:9,f:0},66:{p:1,c:10,f:0},
+  67:{p:1,c:3,f:0},68:{p:1,c:6,f:0},69:{p:3,c:7,f:0},70:{p:2,c:20,f:0},71:{p:2,c:20,f:0},
+  72:{p:2,c:9,f:15},73:{p:3,c:19,f:1},
+  74:{p:1,c:23,f:0},75:{p:0,c:14,f:0},76:{p:1,c:18,f:0},77:{p:1,c:8,f:0},78:{p:1,c:15,f:0},
+  79:{p:2,c:75,f:0},80:{p:1,c:12,f:0},81:{p:1,c:8,f:0},
+  82:{p:9,c:20,f:0},83:{p:9,c:23,f:0},84:{p:9,c:27,f:3},85:{p:5,c:14,f:0},
+  86:{p:9,c:54,f:32},87:{p:6,c:66,f:22},88:{p:12,c:53,f:24},89:{p:21,c:22,f:50},
+  90:{p:21,c:20,f:51},91:{p:9,c:60,f:22},
+  92:{p:0,c:0,f:0},93:{p:3,c:5,f:3},94:{p:0,c:1,f:0},95:{p:3,c:12,f:2},
+  96:{p:1,c:10,f:0},97:{p:0,c:11,f:0},98:{p:0,c:0,f:0},99:{p:0,c:0,f:0},
+  100:{p:7,c:59,f:31},101:{p:5,c:51,f:35},102:{p:3,c:25,f:11},103:{p:5,c:50,f:18},104:{p:6,c:55,f:16},
+  105:{p:11,c:33,f:10},106:{p:17,c:24,f:14},107:{p:4,c:41,f:15},108:{p:18,c:17,f:17},
+  109:{p:7,c:83,f:1},110:{p:3,c:12,f:1},
+  111:{p:0,c:0,f:100},112:{p:1,c:0,f:81},113:{p:1,c:1,f:75},114:{p:1,c:10,f:33},
+  115:{p:6,c:66,f:25},116:{p:6,c:65,f:26},117:{p:5,c:63,f:27},118:{p:4,c:52,f:11},
+  119:{p:5,c:62,f:22},120:{p:8,c:53,f:34},121:{p:5,c:67,f:18},122:{p:6,c:60,f:33},
+  123:{p:5,c:62,f:22},124:{p:9,c:53,f:36},125:{p:6,c:42,f:43},126:{p:7,c:31,f:52},
+  127:{p:5,c:60,f:30},128:{p:5,c:55,f:20},
+  129:{p:8,c:58,f:34},130:{p:8,c:58,f:31},131:{p:7,c:59,f:33},132:{p:8,c:60,f:24},
+  133:{p:5,c:63,f:25},134:{p:4,c:67,f:18},135:{p:4,c:69,f:16},136:{p:7,c:63,f:27},
+  137:{p:7,c:55,f:31},138:{p:6,c:58,f:31},139:{p:7,c:60,f:29},140:{p:7,c:60,f:29},
+  141:{p:4,c:61,f:24},142:{p:2,c:70,f:9},143:{p:3,c:65,f:29},144:{p:6,c:54,f:40},
+  145:{p:5,c:67,f:21},146:{p:5,c:67,f:21},147:{p:5,c:69,f:22},148:{p:5,c:68,f:22},
+  149:{p:10,c:62,f:26},150:{p:9,c:61,f:28},
+};
+function getMacros(foodId, cal100, grams) {
+  const m = MACROS[foodId];
+  const ratio = (grams||100)/100;
+  if (m) return {prot:Math.round(m.p*ratio), carb:Math.round(m.c*ratio), fat:Math.round(m.f*ratio)};
+  // fallback estimation from calories
+  const totalCal = cal100*(grams||100)/100;
+  return {prot:Math.round(totalCal*0.15/4), carb:Math.round(totalCal*0.45/4), fat:Math.round(totalCal*0.40/9)};
+}
 
 const ACTIVITY = {
   sedentary:1.2, light:1.375, moderate:1.55, active:1.725, extreme:1.9
@@ -983,6 +907,7 @@ let profile = null;
 let entries = [];
 let history = [];
 let pantry  = [];
+let weightLog = [];
 let currentGender = "male";
 let currentGoal   = "lose";
 let currentRate   = 0.5;
@@ -1022,6 +947,7 @@ function listenFirebase() {
   });
   db.ref(`${uid}/history`).on('value', snap => { history = snap.val() ? Object.values(snap.val()) : []; });
   db.ref(`${uid}/pantry`).on('value', snap => { pantry = snap.val() ? Object.values(snap.val()) : []; renderQuickAdd(); renderPantryTab(); });
+  db.ref(`${uid}/weightLog`).on('value', snap => { weightLog = snap.val() ? Object.values(snap.val()) : []; });
 }
 
 async function fbSet(path, val) {
@@ -1062,10 +988,12 @@ function shortDay(s) { return new Date(s+'T12:00:00').toLocaleDateString('he-IL'
 // INIT
 // ══════════════════════════════════════════
 async function init() {
-  // Load Firebase config from localStorage if saved
-  const savedFbConfig = localStorage.getItem('ct-firebase-config');
-  if (savedFbConfig) {
-    try { initFirebase(JSON.parse(savedFbConfig)); } catch(e){}
+  // Init Firebase only if SDK loaded successfully
+  if (typeof firebase !== 'undefined') {
+    try { initFirebase(FIREBASE_CONFIG); } catch(e){ console.warn('Firebase init failed', e); }
+  } else {
+    console.warn('Firebase SDK not loaded — using localStorage');
+    document.getElementById('firebase-status').textContent = '⚠️ לא מחובר — עובד מקומית';
   }
 
   profile = await fbGet('profile');
@@ -1096,6 +1024,8 @@ async function init() {
   if (!Array.isArray(history)) history = Object.values(history);
   pantry  = (await fbGet('pantry'))  || [];
   if (!Array.isArray(pantry)) pantry = Object.values(pantry);
+  weightLog = (await fbGet('weightLog')) || [];
+  if (!Array.isArray(weightLog)) weightLog = Object.values(weightLog);
 
   showScreen('dashboard');
   document.getElementById('fab-btn').style.display = '';
@@ -1121,13 +1051,14 @@ function showScreen(name) {
   // FAB only on dashboard
   document.getElementById('fab-btn').style.display = name==='dashboard' ? '' : 'none';
   // Update bottom nav active state
-  ['dashboard','history','settings'].forEach(n=>{
+  ['dashboard','history','weight','settings'].forEach(n=>{
     const btn = document.getElementById('nav-'+n);
     if (btn) btn.classList.toggle('active', n===name);
   });
   if (name==='dashboard') renderDashboard();
   if (name==='history')   renderHistory();
   if (name==='settings')  renderSettings();
+  if (name==='weight')    renderWeight();
 }
 
 // ══════════════════════════════════════════
@@ -1190,6 +1121,26 @@ function renderDashboard() {
   // Food list
   renderFoodList();
   renderQuickAdd();
+
+  // Macros
+  const totProt = entries.reduce((s,e)=>s+(e.prot||0),0);
+  const totCarb  = entries.reduce((s,e)=>s+(e.carb||0),0);
+  const totFat   = entries.reduce((s,e)=>s+(e.fat||0),0);
+  const targProt = Math.round((target*0.25)/4);
+  const targCarb = Math.round((target*0.45)/4);
+  const targFat  = Math.round((target*0.30)/9);
+  const pctP = Math.min(Math.round(totProt/targProt*100),100)||0;
+  const pctC = Math.min(Math.round(totCarb/targCarb*100),100)||0;
+  const pctF = Math.min(Math.round(totFat/targFat*100),100)||0;
+  document.getElementById('macro-prot-val').textContent = totProt+'ג׳';
+  document.getElementById('macro-carb-val').textContent = totCarb+'ג׳';
+  document.getElementById('macro-fat-val').textContent  = totFat+'ג׳';
+  document.getElementById('macro-prot-sub').textContent = `מתוך ~${targProt}ג׳`;
+  document.getElementById('macro-carb-sub').textContent = `מתוך ~${targCarb}ג׳`;
+  document.getElementById('macro-fat-sub').textContent  = `מתוך ~${targFat}ג׳`;
+  document.getElementById('macro-prot-bar').style.width = pctP+'%';
+  document.getElementById('macro-carb-bar').style.width = pctC+'%';
+  document.getElementById('macro-fat-bar').style.width  = pctF+'%';
 }
 
 function renderFoodList() {
@@ -1229,8 +1180,9 @@ function renderQuickAdd() {
 // ══════════════════════════════════════════
 // FOOD ACTIONS
 // ══════════════════════════════════════════
-async function addEntry(name, cal100, grams, calories) {
-  const item = { id:uid(), name, cal100:cal100||0, grams:grams||100, calories:calories||Math.round(cal100*grams/100), time:timeNow() };
+async function addEntry(name, cal100, grams, calories, foodId) {
+  const m = getMacros(foodId||0, cal100, grams||100);
+  const item = { id:uid(), name, cal100:cal100||0, grams:grams||100, calories:calories||Math.round(cal100*grams/100), time:timeNow(), foodId:foodId||0, prot:m.prot, carb:m.carb, fat:m.fat };
   entries = [...entries, item];
   await fbSet('today', {date:todayStr(), entries});
   await saveToPantry(item);
@@ -1311,11 +1263,8 @@ async function removeFromPantry(id) {
 function renderPantryTab() {
   const list = document.getElementById('pantry-list');
   const empty = document.getElementById('pantry-empty');
-  const countEl = document.getElementById('pantry-count');
-  if (!pantry.length) { empty.style.display='block'; list.innerHTML=''; countEl.style.display='none'; return; }
+  if (!pantry.length) { empty.style.display='block'; list.innerHTML=''; return; }
   empty.style.display='none';
-  countEl.style.display='block';
-  countEl.textContent = `${pantry.length} מאכלים שמורים · ממוין לפי שימוש`;
   list.innerHTML = pantry.map(item=>`
     <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--card2);border-radius:12px;border:1px solid var(--border);margin-bottom:8px;">
       <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;border:1px solid #fde68a;">
@@ -1384,30 +1333,13 @@ function searchFoods(q) {
   const selEl = document.getElementById('selected-food');
   selEl.style.display='none';
   if (!q.trim()) { res.innerHTML=''; manEl.style.display='none'; return; }
-
-  const terms = q.trim().split(' ').filter(t => t.length > 0);
-
-  // חיפוש חכם — כל המילים צריכות להופיע
-  const matches = FOODS.filter(f => {
-    const haystack = (f.name + ' ' + f.cat).toLowerCase();
-    return terms.every(term => haystack.includes(term.toLowerCase()));
-  });
-
-  // אם אין תוצאות — נסה חיפוש רחב (לפחות מילה אחת)
-  const results = matches.length > 0 ? matches :
-    FOODS.filter(f => {
-      const haystack = (f.name + ' ' + f.cat).toLowerCase();
-      return terms.some(term => haystack.includes(term.toLowerCase()));
-    });
-
-  const final = results.slice(0, 10);
-
-  if (final.length) {
+  const matches = FOODS.filter(f=>f.name.includes(q.trim())||f.cat.includes(q.trim())).slice(0,8);
+  if (matches.length) {
     manEl.style.display='none';
     res.innerHTML=`<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(30,60,120,0.08);">
-      ${final.map((f,i)=>`
+      ${matches.map((f,i)=>`
         <div onclick="selectFood(${f.id})"
-          style="padding:10px 14px;cursor:pointer;background:${i%2?'var(--card2)':'#fff'};display:flex;justify-content:space-between;align-items:center;${i<final.length-1?'border-bottom:1px solid var(--border);':''}">
+          style="padding:10px 14px;cursor:pointer;background:${i%2?'var(--card2)':'#fff'};display:flex;justify-content:space-between;align-items:center;${i<matches.length-1?'border-bottom:1px solid var(--border);':''}">
           <div><div style="font-size:14px;font-weight:600;">${f.name}</div><div style="font-size:11px;color:var(--muted);">${f.cat}</div></div>
           <div style="font-size:13px;color:var(--accent);font-weight:700;background:var(--accent-light);border-radius:8px;padding:3px 8px;">${f.cal} קל׳/100ג׳</div>
         </div>`).join('')}
@@ -1441,7 +1373,7 @@ function updateCalPreview() {
 async function confirmAddFood() {
   if (!selectedFood) return;
   const grams = Number(document.getElementById('food-grams').value)||100;
-  await addEntry(selectedFood.name, selectedFood.cal, grams);
+  await addEntry(selectedFood.name, selectedFood.cal, grams, null, selectedFood.id);
   closeModal();
 }
 
@@ -1471,18 +1403,9 @@ async function analyzeImage(file) {
   document.getElementById('img-result').style.display='none';
   try {
     const base64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
-    const apiKey = localStorage.getItem('ct-anthropic-key') || '';
-    if (!apiKey) {
-      throw new Error('חסר מפתח API — הגדר אותו בלשונית פרופיל');
-    }
     const resp = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST', headers:{
-        'Content-Type':'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body:JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:400,
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:400,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:base64}},
           {type:'text',text:'זהה את המאכל בתמונה. ענה אך ורק בJSON ללא backticks:\n{"foodName":"שם בעברית","cal100":קלוריות_ל100גרם,"estimatedGrams":כמות_משוערת,"notes":"הערה"}'}
@@ -1500,7 +1423,7 @@ async function analyzeImage(file) {
     updateImgCalPreview();
     document.getElementById('img-result').style.display='block';
   } catch(e) {
-    document.getElementById('img-error').textContent = '⚠️ שגיאה: ' + (e.message||'לא הצלחתי לנתח את התמונה');
+    document.getElementById('img-error').textContent = '⚠️ לא הצלחתי לנתח את התמונה — נסה תמונה ברורה יותר';
     document.getElementById('img-error').style.display='block';
     document.getElementById('img-drop-zone').style.display='block';
   }
@@ -1689,9 +1612,6 @@ function renderSettings() {
   updateSetPreview();
   const saved=localStorage.getItem('ct-firebase-config');
   if(saved) document.getElementById('firebase-status').textContent='✅ מחובר — סנכרון פעיל';
-  // Show API key status
-  const hasKey = !!localStorage.getItem('ct-anthropic-key');
-  document.getElementById('anthropic-key-status').textContent = hasKey ? '✅ מפתח מוגדר' : '⚠️ לא הוגדר מפתח';
   // attach listeners once
   ['set-age','set-height','set-weight'].forEach(id=>{
     const el=document.getElementById(id);
@@ -1700,16 +1620,7 @@ function renderSettings() {
   document.getElementById('set-activity').onchange=updateSetPreview;
 }
 
-function saveAnthropicKey() {
-  const key = document.getElementById('anthropic-key-input').value.trim();
-  if (!key.startsWith('sk-ant-')) { 
-    document.getElementById('anthropic-key-status').textContent = '❌ מפתח לא תקין';
-    return; 
-  }
-  localStorage.setItem('ct-anthropic-key', key);
-  document.getElementById('anthropic-key-status').textContent = '✅ מפתח נשמר בהצלחה';
-  document.getElementById('anthropic-key-input').value = '';
-}
+function setGoalBtn(g) { setCurrentGoal=g; updateGoalButtons(); updateSetPreview(); }
 function updateGoalButtons() {
   ['lose','maintain','gain'].forEach(g=>{
     const btn=document.getElementById('set-goal-'+g);
@@ -1753,8 +1664,8 @@ async function saveSettings() {
 
 async function resetApp() {
   if (!confirm('האם לאפס את כל הנתונים? פעולה זו בלתי הפיכה.')) return;
-  entries=[]; history=[]; pantry=[];
-  await fbSet('profile',null); await fbSet('today',null); await fbSet('history',null); await fbSet('pantry',null);
+  entries=[]; history=[]; pantry=[]; weightLog=[];
+  await fbSet('profile',null); await fbSet('today',null); await fbSet('history',null); await fbSet('pantry',null); await fbSet('weightLog',null);
   localStorage.clear();
   location.reload();
 }
@@ -1778,6 +1689,202 @@ function saveFirebaseConfig() {
 }
 
 // ══════════════════════════════════════════
+// WEIGHT TRACKING
+// ══════════════════════════════════════════
+function renderWeight() {
+  // Set today's date as default
+  const dateEl = document.getElementById('wt-date');
+  if (!dateEl.value) dateEl.value = todayStr();
+
+  const sorted = [...weightLog].sort((a,b)=>a.date.localeCompare(b.date));
+  const latest = sorted[sorted.length-1];
+  const first  = sorted[0];
+  const count  = sorted.length;
+
+  // Summary stats
+  document.getElementById('wt-entries-count').textContent = count;
+  if (latest) {
+    document.getElementById('wt-current').textContent = latest.weight.toFixed(1)+' ק"ג';
+  } else {
+    document.getElementById('wt-current').textContent = '-';
+  }
+  if (count >= 2) {
+    const diff = (latest.weight - first.weight).toFixed(1);
+    const sign = diff > 0 ? '+' : '';
+    const col = diff < 0 ? 'var(--accent)' : diff > 0 ? 'var(--danger)' : 'var(--muted)';
+    document.getElementById('wt-change').textContent = sign+diff+' ק"ג';
+    document.getElementById('wt-change').style.color = col;
+  } else {
+    document.getElementById('wt-change').textContent = '-';
+  }
+
+  // Chart
+  renderWeightChart(sorted);
+
+  // List
+  renderWeightList(sorted);
+}
+
+function renderWeightChart(sorted) {
+  const emptyEl = document.getElementById('wt-chart-empty');
+  const svgEl   = document.getElementById('wt-svg');
+  const legendEl = document.getElementById('wt-legend');
+
+  if (sorted.length < 2) {
+    emptyEl.style.display = 'block';
+    svgEl.style.display = 'none';
+    if (legendEl) legendEl.style.display = 'none';
+    return;
+  }
+  emptyEl.style.display = 'none';
+  svgEl.style.display = 'block';
+  if (legendEl) legendEl.style.display = 'flex';
+
+  const W = Math.max(document.getElementById('wt-chart-card').clientWidth - 36, 280);
+  const H = 180;
+  const padL = 42, padR = 16, padT = 16, padB = 32;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+
+  const weights = sorted.map(e=>e.weight);
+  const minW = Math.min(...weights) - 0.5;
+  const maxW = Math.max(...weights) + 0.5;
+  const targetW = profile?.weight || null;
+
+  const xOf = i => padL + (i/(sorted.length-1))*chartW;
+  const yOf = w => padT + (1 - (w-minW)/(maxW-minW))*chartH;
+
+  // Build SVG
+  let svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;font-family:Heebo,sans-serif;">`;
+
+  // Grid lines
+  const steps = 4;
+  for (let i=0;i<=steps;i++) {
+    const w = minW + (maxW-minW)*i/steps;
+    const y = yOf(w);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#e2eaf5" stroke-width="1" stroke-dasharray="3,3"/>`;
+    svg += `<text x="${padL-4}" y="${y+4}" text-anchor="end" font-size="10" fill="#94afc8">${w.toFixed(1)}</text>`;
+  }
+
+  // Target line (starting weight goal from profile)
+  if (targetW && targetW >= minW && targetW <= maxW) {
+    const yt = yOf(targetW);
+    svg += `<line x1="${padL}" y1="${yt}" x2="${W-padR}" y2="${yt}" stroke="#94afc8" stroke-width="1.5" stroke-dasharray="6,4"/>`;
+    svg += `<text x="${W-padR+4}" y="${yt+4}" font-size="10" fill="#94afc8">יעד</text>`;
+  }
+
+  // Area fill under line
+  if (sorted.length >= 2) {
+    let areaPath = `M ${xOf(0)} ${yOf(sorted[0].weight)}`;
+    for (let i=1;i<sorted.length;i++) {
+      const cx = (xOf(i-1)+xOf(i))/2;
+      areaPath += ` C ${cx} ${yOf(sorted[i-1].weight)}, ${cx} ${yOf(sorted[i].weight)}, ${xOf(i)} ${yOf(sorted[i].weight)}`;
+    }
+    areaPath += ` L ${xOf(sorted.length-1)} ${H-padB} L ${padL} ${H-padB} Z`;
+    svg += `<defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#16a34a" stop-opacity="0.25"/><stop offset="100%" stop-color="#16a34a" stop-opacity="0"/></linearGradient></defs>`;
+    svg += `<path d="${areaPath}" fill="url(#wg)"/>`;
+  }
+
+  // Line
+  let linePath = '';
+  for (let i=0;i<sorted.length;i++) {
+    if (i===0) linePath = `M ${xOf(i)} ${yOf(sorted[i].weight)}`;
+    else {
+      const cx = (xOf(i-1)+xOf(i))/2;
+      linePath += ` C ${cx} ${yOf(sorted[i-1].weight)}, ${cx} ${yOf(sorted[i].weight)}, ${xOf(i)} ${yOf(sorted[i].weight)}`;
+    }
+  }
+  svg += `<path d="${linePath}" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"/>`;
+
+  // Dots + labels
+  sorted.forEach((e,i) => {
+    const x=xOf(i), y=yOf(e.weight);
+    svg += `<circle cx="${x}" cy="${y}" r="5" fill="#16a34a" stroke="#fff" stroke-width="2"/>`;
+    svg += `<text x="${x}" y="${y-10}" text-anchor="middle" font-size="10" font-weight="700" fill="#16a34a">${e.weight.toFixed(1)}</text>`;
+    // X-axis date label
+    const d = new Date(e.date+'T12:00:00');
+    const lbl = `${d.getDate()}/${d.getMonth()+1}`;
+    svg += `<text x="${x}" y="${H-padB+14}" text-anchor="middle" font-size="10" fill="#94afc8">${lbl}</text>`;
+  });
+
+  svg += '</svg>';
+  svgEl.innerHTML = svg;
+  svgEl.setAttribute('width', W);
+  svgEl.setAttribute('height', H);
+}
+
+function renderWeightList(sorted) {
+  const listEl = document.getElementById('wt-list');
+  if (!sorted.length) {
+    listEl.innerHTML = `<div style="text-align:center;padding:28px;color:var(--muted);">
+      <div style="font-size:36px;margin-bottom:8px;">⚖️</div>
+      <div>אין שקילות עדיין — הוסף את הראשונה!</div>
+    </div>`;
+    return;
+  }
+  listEl.innerHTML = [...sorted].reverse().map((e,i,arr)=>{
+    const prev = arr[i+1];
+    const diff = prev ? (e.weight - prev.weight).toFixed(1) : null;
+    const sign = diff > 0 ? '+' : '';
+    const col  = diff < 0 ? 'var(--accent)' : diff > 0 ? 'var(--danger)' : 'var(--muted)';
+    const dayStr = new Date(e.date+'T12:00:00').toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
+    return `<div class="card-sm" style="margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+      <div style="width:42px;height:42px;border-radius:10px;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">⚖️</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:700;">${e.weight.toFixed(1)} ק"ג</div>
+        <div style="font-size:11px;color:var(--muted);">${dayStr}${e.note?' · '+e.note:''}</div>
+      </div>
+      ${diff!==null?`<div style="font-size:14px;font-weight:800;color:${col};">${sign}${diff}</div>`:'<div style="font-size:11px;color:var(--dim);">נקודת פתיחה</div>'}
+      <button onclick="deleteWeight('${e.id}')" style="background:var(--card2);border:1px solid var(--border);border-radius:8px;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:12px;flex-shrink:0;">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function logWeight() {
+  const wVal = parseFloat(document.getElementById('wt-input').value);
+  const date  = document.getElementById('wt-date').value || todayStr();
+  const note  = document.getElementById('wt-note').value.trim();
+  if (!wVal || wVal < 20 || wVal > 300) {
+    document.getElementById('wt-msg').style.display='block';
+    document.getElementById('wt-msg').style.color='var(--danger)';
+    document.getElementById('wt-msg').textContent='⚠️ הזן משקל תקין (20–300 ק"ג)';
+    setTimeout(()=>document.getElementById('wt-msg').style.display='none',2500);
+    return;
+  }
+  // Replace if same date exists
+  weightLog = weightLog.filter(e=>e.date!==date);
+  weightLog.push({id:uid(), date, weight:wVal, note});
+  weightLog.sort((a,b)=>a.date.localeCompare(b.date));
+  await fbSet('weightLog', weightLog);
+
+  // Also update profile weight with latest
+  if (profile) {
+    profile.weight = wVal;
+    await fbSet('profile', profile);
+  }
+
+  document.getElementById('wt-input').value='';
+  document.getElementById('wt-note').value='';
+  const msg = document.getElementById('wt-msg');
+  msg.style.display='block'; msg.style.color='var(--accent)';
+  msg.textContent='✅ המשקל נשמר בהצלחה!';
+  setTimeout(()=>msg.style.display='none',2500);
+  renderWeight();
+}
+
+async function deleteWeight(id) {
+  weightLog = weightLog.filter(e=>e.id!==id);
+  await fbSet('weightLog', weightLog);
+  renderWeight();
+}
+
+async function clearWeightLog() {
+  weightLog = [];
+  await fbSet('weightLog', []);
+  renderWeight();
+}
+
+// ══════════════════════════════════════════
 // START
 // ══════════════════════════════════════════
 window.addEventListener('load', init);
@@ -1787,7 +1894,7 @@ window.addEventListener('load', init);
 // ══════════════════════════════════════════
 // Register inline service worker for offline support
 const swCode = `
-const CACHE = 'calorie-tracker-v3';
+const CACHE = 'calorie-tracker-v1';
 const ASSETS = [
   'https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
@@ -1798,15 +1905,11 @@ self.addEventListener('install', e => {
   self.skipWaiting();
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys => Promise.all(
-      keys.filter(k => k !== 'calorie-tracker-v3').map(k => caches.delete(k))
-    )).then(() => clients.claim())
-  );
+  e.waitUntil(clients.claim());
 });
 self.addEventListener('fetch', e => {
   e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
+    caches.match(e.request).then(cached => cached || fetch(e.request).catch(() => cached))
   );
 });
 `;
