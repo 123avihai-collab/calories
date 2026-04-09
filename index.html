@@ -1859,7 +1859,7 @@ async function processAi(text) {
       body: JSON.stringify({model:'claude-sonnet-4-6', max_tokens:600, system:AI_SYSTEM, messages:msgs})
     });
     const d = await r.json();
-    if (d.error) throw new Error(d.error.message);
+    if (d.error) throw new Error(d.error.message || JSON.stringify(d.error));
     const reply = d.content?.find(c=>c.type==='text')?.text || 'שגיאה';
     typing.remove();
     const addMatch = reply.match(/```ADD_FOOD\s*([\s\S]*?)```/);
@@ -1873,7 +1873,7 @@ async function processAi(text) {
       } catch { appendAiMsg('ai', reply); }
     } else { appendAiMsg('ai', reply); }
     aiMessages.push({role:'assistant', content:reply});
-  } catch { typing.remove(); appendAiMsg('ai', '⚠️ שגיאת חיבור — נסה שוב'); }
+  } catch(err) { typing.remove(); appendAiMsg('ai', '⚠️ שגיאה: ' + (err?.message || JSON.stringify(err))); }
   aiLoading = false;
   document.getElementById('ai-send-btn').disabled = false;
   aiScrollBottom();
