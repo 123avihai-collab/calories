@@ -1513,7 +1513,7 @@ async function analyzeImage(file) {
     const base64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
     const resp = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST', headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:400,
+      body:JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:400,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:base64}},
           {type:'text',text:'זהה את המאכל בתמונה. ענה אך ורק בJSON ללא backticks:\n{"foodName":"שם בעברית","cal100":קלוריות_ל100גרם,"estimatedGrams":כמות_משוערת,"notes":"הערה"}'}
@@ -1856,7 +1856,7 @@ async function processAi(text) {
     ];
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST', headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({model:'claude-sonnet-4-20250514', max_tokens:600, system:AI_SYSTEM, messages:msgs})
+      body: JSON.stringify({model:'claude-sonnet-4-6', max_tokens:600, system:AI_SYSTEM, messages:msgs})
     });
     const d = await r.json();
     if (d.error) throw new Error(d.error.message);
