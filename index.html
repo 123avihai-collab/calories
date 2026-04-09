@@ -273,7 +273,14 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
         <div style="font-size:12px; color:var(--muted);" id="dash-date"></div>
         <h2 style="font-size:20px; font-weight:800;" id="dash-greet"></h2>
       </div>
-      <button onclick="showScreen('history')" style="background:var(--blue-light); border:none; border-radius:10px; width:38px; height:38px; cursor:pointer; font-size:16px;">📅</button>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <!-- Firebase status pill -->
+        <div id="fb-status-pill" style="display:flex; align-items:center; gap:5px; padding:5px 10px; border-radius:20px; font-size:11px; font-weight:700; background:var(--card2); border:1px solid var(--border);">
+          <div id="fb-status-dot" style="width:8px; height:8px; border-radius:50%; background:var(--dim);"></div>
+          <span id="fb-status-text">בודק...</span>
+        </div>
+        <button onclick="showScreen('history')" style="background:var(--blue-light); border:none; border-radius:10px; width:38px; height:38px; cursor:pointer; font-size:16px;">📅</button>
+      </div>
     </div>
 
     <!-- Ring card -->
@@ -806,6 +813,11 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 // ══════════════════════════════════════════
 // FOOD DATABASE
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// ANTHROPIC API KEY
+// ══════════════════════════════════════════
+const ANTHROPIC_KEY = "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";
+
 const FOODS = [
   {id:1,name:"חומוס",cal:166,cat:"ממרחים"},{id:2,name:"חומוס עם טחינה",cal:185,cat:"ממרחים"},
   {id:3,name:"טחינה",cal:595,cat:"ממרחים"},{id:4,name:"בבגנוש",cal:85,cat:"ממרחים"},
@@ -1097,6 +1109,36 @@ async function init() {
   showScreen('dashboard');
   document.getElementById('fab-btn').style.display = '';
   document.getElementById('bottom-nav').style.display = 'flex';
+  updateFbStatusPill();
+}
+
+function updateFbStatusPill() {
+  const dot  = document.getElementById('fb-status-dot');
+  const text = document.getElementById('fb-status-text');
+  const pill = document.getElementById('fb-status-pill');
+  if (!dot || !text) return;
+  if (db) {
+    // בדוק חיבור פעיל
+    const connRef = firebase.database().ref('.info/connected');
+    connRef.on('value', snap => {
+      if (snap.val() === true) {
+        dot.style.background  = 'var(--accent)';
+        text.textContent      = '🔥 מחובר';
+        pill.style.background = 'var(--accent-light)';
+        pill.style.borderColor= 'var(--accent-dim)';
+      } else {
+        dot.style.background  = 'var(--warning)';
+        text.textContent      = '⚠️ לא מחובר';
+        pill.style.background = 'var(--warning-light)';
+        pill.style.borderColor= 'rgba(217,119,6,0.3)';
+      }
+    });
+  } else {
+    dot.style.background  = 'var(--danger)';
+    text.textContent      = '❌ מקומי בלבד';
+    pill.style.background = 'var(--danger-light)';
+    pill.style.borderColor= 'rgba(220,38,38,0.3)';
+  }
 }
 
 async function archiveDay(d) {
@@ -1470,7 +1512,7 @@ async function analyzeImage(file) {
   try {
     const base64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
     const resp = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST', headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:400,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:base64}},
@@ -1813,7 +1855,7 @@ async function processAi(text) {
       ...aiMessages.slice(1)
     ];
     const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST', headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body: JSON.stringify({model:'claude-sonnet-4-20250514', max_tokens:600, system:AI_SYSTEM, messages:msgs})
     });
     const d = await r.json();
