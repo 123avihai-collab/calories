@@ -480,6 +480,13 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
         <div style="font-size:12px; color:var(--muted); margin-bottom:10px;" id="firebase-status">לא מוגדר — נתונים נשמרים מקומית בלבד</div>
         <button class="btn btn-sm btn-blue btn-w" onclick="showFirebaseSetup()">הגדר סנכרון</button>
       </div>
+      <!-- Anthropic API Key -->
+      <div class="card" style="margin-bottom:14px; border-color:rgba(99,102,241,0.3);">
+        <div style="font-size:14px; font-weight:700; margin-bottom:4px;">🤖 מפתח AI (Anthropic)</div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:10px;" id="ai-key-status">לא מוגדר — AI לא יעבוד</div>
+        <input class="input" id="ai-key-input" type="password" placeholder="sk-ant-api03-..." style="margin-bottom:10px; font-size:13px; font-family:monospace;">
+        <button class="btn btn-sm btn-w" style="background:linear-gradient(135deg,#6366f1,#4f46e5);" onclick="saveApiKey()">💾 שמור מפתח AI</button>
+      </div>
       <button onclick="resetApp()" style="width:100%; padding:12px; border-radius:12px; border:1px solid var(--danger); background:transparent; color:var(--danger); cursor:pointer; font-size:13px; font-family:inherit; font-weight:600;">⚠ איפוס האפליקציה</button>
     </div>
   </div>
@@ -816,7 +823,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 // ══════════════════════════════════════════
 // ANTHROPIC API KEY
 // ══════════════════════════════════════════
-const ANTHROPIC_KEY = "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";
+let ANTHROPIC_KEY = "";
 
 const FOODS = [
   {id:1,name:"חומוס",cal:166,cat:"ממרחים"},{id:2,name:"חומוס עם טחינה",cal:185,cat:"ממרחים"},
@@ -1105,6 +1112,9 @@ async function init() {
   if (!Array.isArray(pantry)) pantry = Object.values(pantry);
   weightLog = (await fbGet('weightLog')) || [];
   if (!Array.isArray(weightLog)) weightLog = Object.values(weightLog);
+
+  // Load API key
+  ANTHROPIC_KEY = (await fbGet('anthropicKey')) || localStorage.getItem('ct-anthropic-key') || '';
 
   showScreen('dashboard');
   document.getElementById('fab-btn').style.display = '';
@@ -1720,6 +1730,7 @@ function renderSettings() {
   updateSetPreview();
   const saved=localStorage.getItem('ct-firebase-config');
   if(saved) document.getElementById('firebase-status').textContent='✅ מחובר — סנכרון פעיל';
+  updateAiKeyStatus();
   // attach listeners once
   ['set-age','set-height','set-weight'].forEach(id=>{
     const el=document.getElementById(id);
@@ -1728,7 +1739,27 @@ function renderSettings() {
   document.getElementById('set-activity').onchange=updateSetPreview;
 }
 
-function setGoalBtn(g) { setCurrentGoal=g; updateGoalButtons(); updateSetPreview(); }
+async function saveApiKey() {
+  const key = document.getElementById('ai-key-input').value.trim();
+  if (!key.startsWith('sk-ant-')) { alert('מפתח לא תקין — חייב להתחיל ב-sk-ant-'); return; }
+  ANTHROPIC_KEY = key;
+  localStorage.setItem('ct-anthropic-key', key);
+  await fbSet('anthropicKey', key);
+  updateAiKeyStatus();
+  alert('✅ מפתח AI נשמר בהצלחה!');
+}
+
+function updateAiKeyStatus() {
+  const el = document.getElementById('ai-key-status');
+  if (!el) return;
+  if (ANTHROPIC_KEY && ANTHROPIC_KEY.startsWith('sk-ant-')) {
+    el.textContent = '✅ מפתח פעיל — AI עובד';
+    el.style.color = 'var(--accent)';
+  } else {
+    el.textContent = '❌ לא מוגדר — AI לא יעבוד';
+    el.style.color = 'var(--danger)';
+  }
+}
 function updateGoalButtons() {
   ['lose','maintain','gain'].forEach(g=>{
     const btn=document.getElementById('set-goal-'+g);
