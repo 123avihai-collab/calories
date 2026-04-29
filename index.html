@@ -479,6 +479,13 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
           <div style="font-size:26px; font-weight:800; margin:4px 0;" id="hist-week-diff">0</div>
           <div style="font-size:11px; color:var(--muted);">ימים ביעד: <strong style="color:var(--accent);" id="hist-week-ontarget">0/0</strong></div>
         </div>
+
+        <!-- Planned meals indicator -->
+        <div id="hist-planned-box" style="display:none; background:#f5f3ff; border:1px solid #ddd6fe; border-radius:10px; padding:12px; text-align:center; margin-top:10px;">
+          <div style="font-size:11px; color:#7c3aed; font-weight:700; margin-bottom:4px;">🔮 ארוחות מתוכננות לעתיד</div>
+          <div style="font-size:20px; font-weight:800; color:#7c3aed; margin-bottom:8px;" id="hist-planned-total">0 קל'</div>
+          <div style="font-size:11px; color:var(--muted); padding:6px 8px; background:#fff; border-radius:8px;" id="hist-planned-tip"></div>
+        </div>
       </div>
 
       <!-- Empty state -->
@@ -626,7 +633,8 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       </div>
     </div>
     <div class="quick-prompts">
-      <button class="qp-chip" onclick="document.getElementById('ai-img-input').click()" style="background:#fef3c7; border-color:#fde68a; color:#d97706;">📷 צלם מאכל</button>
+      <button class="qp-chip" onclick="document.getElementById('ai-img-input-camera').click()" style="background:#fef3c7; border-color:#fde68a; color:#d97706;">📷 צלם מאכל</button>
+      <button class="qp-chip" onclick="document.getElementById('ai-img-input').click()" style="background:#fce7f3; border-color:#fbcfe8; color:#ec4899;">🖼️ מהגלריה</button>
       <button class="qp-chip" onclick="sendQuickPrompt('כמה קלוריות בחזה עוף 150 גרם?')">🍗 חזה עוף</button>
       <button class="qp-chip" onclick="sendQuickPrompt('כמה קלוריות בשוורמה עוף בפיתה?')">🥙 שוורמה</button>
       <button class="qp-chip" onclick="sendQuickPrompt('כמה קלוריות בביצה קשה?')">🥚 ביצה</button>
@@ -636,11 +644,13 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
     </div>
     <div class="ai-messages" id="ai-messages"></div>
     <input type="file" id="ai-img-input" accept="image/*" style="display:none" onchange="handleAiImage(this)">
+    <input type="file" id="ai-img-input-camera" accept="image/*" capture="environment" style="display:none" onchange="handleAiImage(this)">
     <div id="ai-pending-image" style="display:none;"></div>
     <div class="ai-input-bar">
-      <button class="ai-attach-btn" id="ai-attach-btn" onclick="document.getElementById('ai-img-input').click()" title="צרף תמונה של מאכל">📷</button>
+      <button class="ai-attach-btn" id="ai-camera-btn" onclick="document.getElementById('ai-img-input-camera').click()" title="צלם עכשיו">📷</button>
+      <button class="ai-attach-btn" id="ai-attach-btn" onclick="document.getElementById('ai-img-input').click()" title="בחר מהגלריה">🖼️</button>
       <div class="ai-input-wrap">
-        <textarea class="ai-input" id="ai-input" placeholder="שאל על מאכל או צרף תמונה..." rows="1"
+        <textarea class="ai-input" id="ai-input" placeholder="שאל, צלם או צרף תמונה..." rows="1"
           onkeydown="handleAiKeydown(event)" oninput="autoResizeAi(this)"></textarea>
       </div>
       <button class="ai-send-btn" id="ai-send-btn" onclick="sendAiMessage()">➤</button>
@@ -650,7 +660,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 </div><!-- /app -->
 
 <!-- FAB -->
-<button class="fab" id="fab-btn" onclick="openModal('add')" style="display:none; bottom:80px;">+ הוסף מאכל</button>
+<button class="fab" id="fab-btn" onclick="openAddModal()" style="display:none; bottom:80px;">+ הוסף מאכל</button>
 
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav" id="bottom-nav" style="display:none;">
@@ -880,10 +890,14 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       <button onclick="closeModal()" style="background:var(--card2); border:1px solid var(--border); border-radius:10px; width:32px; height:32px; cursor:pointer; font-size:16px;">✕</button>
     </div>
 
+    <!-- Add to this day button (always visible) -->
+    <button class="btn btn-w" id="day-add-btn" style="background:linear-gradient(135deg,var(--accent),#15803d); margin-bottom:14px; font-size:14px;" onclick="addToCurrentDay()">➕ הוסף ארוחה ליום זה</button>
+
     <!-- Empty state -->
-    <div id="day-detail-empty" style="display:none; text-align:center; padding:28px; color:var(--muted);">
-      <div style="font-size:40px; margin-bottom:8px;">🍽️</div>
-      <div style="font-size:14px;">לא הוזנו מאכלים ביום זה</div>
+    <div id="day-detail-empty" style="display:none; text-align:center; padding:24px 16px; color:var(--muted);">
+      <div style="font-size:40px; margin-bottom:8px;" id="day-detail-empty-icon">🍽️</div>
+      <div style="font-size:14px;" id="day-detail-empty-msg">לא הוזנו מאכלים ביום זה</div>
+      <div style="font-size:12px; color:var(--dim); margin-top:8px;">לחץ על "הוסף ארוחה" למעלה ⬆</div>
     </div>
 
     <!-- Content -->
@@ -1156,6 +1170,7 @@ let imgCal100 = 0;
 let barcodeCal100 = 0;
 let barcodeStream = null;
 let scanningActive = false;
+let _addToDate = null; // null = today; otherwise YYYY-MM-DD for past/future date
 
 // ══════════════════════════════════════════
 // FIREBASE
@@ -1259,6 +1274,22 @@ async function init() {
 
   history = (await fbGet('history')) || [];
   if (!Array.isArray(history)) history = Object.values(history);
+
+  // ── Migration: planned items for today (saved in history) → move to today's entries ──
+  const tStr = todayStr();
+  const tIdx = history.findIndex(d => d.date === tStr);
+  if (tIdx >= 0) {
+    const histToday = history[tIdx];
+    if (histToday.entries && histToday.entries.length > 0) {
+      // Strip "planned" flag and merge into today's entries
+      const planned = histToday.entries.map(e => ({...e, planned:false}));
+      entries = [...entries, ...planned];
+      await fbSet('today', {date: tStr, entries});
+    }
+    history.splice(tIdx, 1);
+    await fbSet('history', history);
+  }
+
   pantry  = (await fbGet('pantry'))  || [];
   if (!Array.isArray(pantry)) pantry = Object.values(pantry);
   weightLog = (await fbGet('weightLog')) || [];
@@ -1457,14 +1488,50 @@ function renderQuickAdd() {
 // ══════════════════════════════════════════
 // FOOD ACTIONS
 // ══════════════════════════════════════════
-async function addEntry(name, cal100, grams, calories, foodId) {
+async function addEntryToDay(date, name, cal100, grams, calories, foodId) {
   const m = getMacros(foodId||0, cal100, grams||100);
-  const item = { id:uid(), name, cal100:cal100||0, grams:grams||100, calories:calories||Math.round(cal100*grams/100), time:timeNow(), foodId:foodId||0, prot:m.prot, carb:m.carb, fat:m.fat };
-  entries = [...entries, item];
-  await fbSet('today', {date:todayStr(), entries});
+  const today = todayStr();
+  const isFuture = date > today;
+  const item = {
+    id: uid(), name, cal100: cal100||0, grams: grams||100,
+    calories: calories || Math.round(cal100*grams/100),
+    time: timeNow(), foodId: foodId||0,
+    prot: m.prot, carb: m.carb, fat: m.fat,
+    planned: isFuture
+  };
+
+  if (date === today) {
+    entries = [...entries, item];
+    await fbSet('today', {date, entries});
+  } else {
+    // Past or future day — store in history
+    if (!Array.isArray(history)) history = history ? Object.values(history).filter(Boolean) : [];
+    const idx = history.findIndex(d => d.date === date);
+    if (idx >= 0) {
+      const day = {...history[idx]};
+      day.entries = [...(day.entries||[]), item];
+      day.totalCalories = day.entries.reduce((s,e)=>s+(e.calories||0), 0);
+      history[idx] = day;
+    } else {
+      history.push({
+        date, entries: [item],
+        totalCalories: item.calories,
+        target: profile?.targetCalories || 2000
+      });
+    }
+    await fbSet('history', history);
+  }
+
   await saveToPantry(item);
   renderDashboard();
+  // Refresh history if currently visible
+  if (document.getElementById('screen-history').classList.contains('active')) renderHistory();
   return item;
+}
+
+// Backward-compatible wrapper — uses _addToDate (null → today)
+async function addEntry(name, cal100, grams, calories, foodId) {
+  return addEntryToDay(_addToDate || todayStr(), name, cal100, grams, calories, foodId);
 }
 
 async function deleteEntry(id, btn) {
@@ -1601,12 +1668,27 @@ async function quickAddFromPantry(id) {
 // ══════════════════════════════════════════
 // MODAL
 // ══════════════════════════════════════════
+function openAddModal(forDate) {
+  _addToDate = forDate || null;
+  openModal('add');
+}
+
 function openModal(which) {
   document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));
   document.getElementById('modal-'+which).classList.add('open');
   if (which==='add') {
     setTab(pantry.length>0?'pantry':'text');
-    document.getElementById('modal-title').textContent = 'הוסף מאכל';
+    // Title reflects target date
+    const titleEl = document.getElementById('modal-title');
+    const today = todayStr();
+    if (_addToDate && _addToDate !== today) {
+      const isFuture = _addToDate > today;
+      const icon = isFuture ? '🔮' : '📅';
+      const verb = isFuture ? 'תכנון ל' : 'הוספה ל';
+      titleEl.innerHTML = `${icon} ${verb}<span style="color:var(--blue); margin-right:4px;">${heDay(_addToDate)}</span>`;
+    } else {
+      titleEl.textContent = 'הוסף מאכל';
+    }
     resetImg(); resetBarcode();
     document.getElementById('search-input').value='';
     document.getElementById('search-results').innerHTML='';
@@ -1617,6 +1699,7 @@ function openModal(which) {
 function closeModal() {
   document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));
   stopScan();
+  _addToDate = null; // always reset target date when modal closes
 }
 
 // ══════════════════════════════════════════
@@ -1973,7 +2056,8 @@ function renderWeekDaysList(weekData) {
   list.innerHTML = weekData.map((day, i) => {
     const m = calcDayMacros(day);
     const isToday = day.date === todayStrVal;
-    const isFuture = new Date(day.date+'T23:59:59') > new Date();
+    const isFuture = day.date > todayStrVal;
+    const isPast = !isToday && !isFuture;
     const dt = new Date(day.date+'T12:00:00');
     const dayNum = dt.getDate();
     const monthNum = dt.getMonth() + 1;
@@ -1983,9 +2067,23 @@ function renderWeekDaysList(weekData) {
     let calColor = 'var(--dim)';
     let badge = '';
 
-    if (isFuture) {
+    if (isFuture && m.cal === 0) {
+      // Empty future — invitation to plan
       bg = '#fafbfd';
-      calColor = 'var(--dim)';
+      calColor = '#a78bfa';
+      badge = '🔮 תכנון — לחץ להוסיף';
+    } else if (isFuture && m.cal > 0) {
+      // Planned future
+      bg = '#f5f3ff';
+      border = '1px solid #ddd6fe';
+      calColor = '#7c3aed';
+      badge = '🔮 מתוכנן';
+    } else if (isPast && m.cal === 0) {
+      // Missed past day — invitation to fill
+      bg = '#fffbeb';
+      border = '1px dashed #fde68a';
+      calColor = '#d97706';
+      badge = '⌛ פספסת — לחץ להשלים';
     } else if (m.cal > 0) {
       const pct = m.cal / day.target;
       if (pct > 1.10) { calColor = 'var(--danger)'; badge = '⚠️ חרגת'; }
@@ -1995,18 +2093,16 @@ function renderWeekDaysList(weekData) {
 
     if (isToday) border = '2px solid var(--blue)';
 
-    const onclick = isFuture ? '' : `onclick="openDayDetail('${day.date}')"`;
-    const cursor = isFuture ? 'default' : 'pointer';
+    // ALL days are clickable now (including past missing days for backfill, future for planning)
+    const onclick = `onclick="openDayDetail('${day.date}')"`;
 
     const todayBadge = isToday ? '<span style="font-size:10px; color:#fff; background:var(--blue); border-radius:8px; padding:2px 7px; font-weight:700; margin-right:5px;">היום</span>' : '';
-    const statusText = badge || (isFuture ? 'עתיד' : 'ללא תיעוד');
-    const statusColor = badge ? calColor : 'var(--dim)';
 
-    return `<div ${onclick} style="background:${bg}; border:${border}; border-radius:14px; padding:12px 14px; margin-bottom:8px; cursor:${cursor}; transition:transform 0.1s; box-shadow:0 1px 4px rgba(30,60,120,0.04);">
+    return `<div ${onclick} style="background:${bg}; border:${border}; border-radius:14px; padding:12px 14px; margin-bottom:8px; cursor:pointer; transition:transform 0.1s; box-shadow:0 1px 4px rgba(30,60,120,0.04);">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:${m.cal>0?'10px':'0'};">
         <div>
           <div style="font-size:14px; font-weight:700;">${dayNames[i]} <span style="color:var(--muted); font-weight:600; font-size:13px;">${dayNum}/${monthNum}</span> ${todayBadge}</div>
-          <div style="font-size:11px; color:${statusColor}; font-weight:700; margin-top:2px;">${statusText}</div>
+          <div style="font-size:11px; color:${calColor}; font-weight:700; margin-top:2px;">${badge}</div>
         </div>
         <div style="text-align:left;">
           <div style="font-size:20px; font-weight:800; color:${calColor}; line-height:1;">${m.cal>0 ? n(m.cal) : '—'}</div>
@@ -2059,28 +2155,103 @@ function renderWeekSummary(totals) {
   const lblEl = document.getElementById('hist-week-diff-label');
   lblEl.textContent = isOver ? '⚠️ חריגה שבועית' : '✓ מתחת ליעד השבועי';
   lblEl.style.color = isOver ? 'var(--danger)' : 'var(--accent)';
+
+  // ── Planned section: future days within the week ──
+  const today = todayStr();
+  const weekDays = getWeekDays(currentWeekStart);
+  const allDays = getAllDays();
+  let plannedTotal = 0;
+  const plannedDays = [];
+  weekDays.filter(d => d > today).forEach(d => {
+    const day = allDays.find(x => x.date === d);
+    if (day) {
+      const m = calcDayMacros(day);
+      if (m.cal > 0) {
+        plannedTotal += m.cal;
+        const dayTarget = day.target || profile?.targetCalories || 2000;
+        plannedDays.push({date:d, cal:m.cal, target:dayTarget, over:m.cal-dayTarget});
+      }
+    }
+  });
+
+  const plannedBox = document.getElementById('hist-planned-box');
+  if (plannedTotal > 0) {
+    plannedBox.style.display = 'block';
+    document.getElementById('hist-planned-total').textContent = n(plannedTotal) + ' קל\'';
+
+    // Compute weekly excess over target if all plans go through
+    const weeklyTarget = (profile?.targetCalories || 2000) * 7;
+    const projectedTotal = totals.cal + plannedTotal;
+    const projectedExcess = projectedTotal - weeklyTarget;
+
+    // Days remaining in the week WITHOUT entries (where you can save)
+    const savableDays = weekDays.filter(d => {
+      if (d > today) return false; // future already covered
+      const day = allDays.find(x => x.date === d);
+      const m = day ? calcDayMacros(day) : {cal:0};
+      // Today counts as savable; past missing days too (could still be filled lightly)
+      return d >= today && m.cal === 0;
+    }).length;
+
+    const tipEl = document.getElementById('hist-planned-tip');
+    if (projectedExcess > 0 && savableDays > 0) {
+      const dailySaving = Math.round(projectedExcess / savableDays);
+      tipEl.innerHTML = `💡 כדי להישאר ביעד שבועי: חסוך כ-<strong style="color:var(--warning);">${n(dailySaving)} קל'/יום</strong> ב-${savableDays} ימים שנותרו`;
+      tipEl.style.display = 'block';
+    } else if (projectedExcess > 0) {
+      tipEl.innerHTML = `⚠️ צפוי חריגה שבועית של <strong style="color:var(--danger);">+${n(projectedExcess)} קל'</strong>`;
+      tipEl.style.display = 'block';
+    } else {
+      tipEl.innerHTML = `✓ צפוי לעמוד ביעד השבועי`;
+      tipEl.style.color = 'var(--accent)';
+      tipEl.style.display = 'block';
+    }
+  } else {
+    plannedBox.style.display = 'none';
+  }
 }
 
 let _currentDayExport = null;
 
 function openDayDetail(date) {
   const day = getAllDays().find(d => d.date === date) || {date, entries:[], target:profile?.targetCalories||2000};
-  document.getElementById('day-detail-title').textContent = heDay(date);
   _currentDayExport = date;
+
+  const today = todayStr();
+  const isFuture = date > today;
+  const isPast = date < today;
+
+  // Title with state icon
+  const titlePrefix = isFuture ? '🔮 ' : isPast ? '📅 ' : '';
+  document.getElementById('day-detail-title').textContent = titlePrefix + heDay(date);
 
   const items = day.entries || [];
 
+  // Subtitle reflects state
+  const subtitleEl = document.getElementById('day-detail-subtitle');
+  if (items.length === 0) {
+    subtitleEl.textContent = isFuture ? 'עדיין לא תוכננו ארוחות' : isPast ? 'יום ללא תיעוד' : 'אין מאכלים היום';
+  } else {
+    subtitleEl.textContent = `${items.length} ${isFuture?'ארוחות מתוכננות':'מאכלים'}`;
+  }
+
+  // Always show "+ Add" button
+  const addBtnLabel = isFuture ? '🔮 הוסף ארוחה לתכנון' : isPast ? '➕ הוסף ארוחה (השלמה)' : '➕ הוסף ארוחה ליום זה';
+  document.getElementById('day-add-btn').innerHTML = addBtnLabel;
+
   if (items.length === 0) {
     document.getElementById('day-detail-empty').style.display = 'block';
+    document.getElementById('day-detail-empty-msg').textContent =
+      isFuture ? '🔮 תכנן את הארוחות מראש' :
+      isPast  ? '⌛ השלם את היום שפספסת' :
+                '🍽️ לא הוזנו מאכלים ביום זה';
     document.getElementById('day-detail-content').style.display = 'none';
-    document.getElementById('day-detail-subtitle').textContent = '';
     openModal('day-detail');
     return;
   }
 
   document.getElementById('day-detail-empty').style.display = 'none';
   document.getElementById('day-detail-content').style.display = 'block';
-  document.getElementById('day-detail-subtitle').textContent = `${items.length} מאכלים`;
 
   // Calc totals
   const tot = items.reduce((a, e) => ({
@@ -2101,18 +2272,20 @@ function openDayDetail(date) {
         <th style="padding:8px 4px; text-align:center; font-weight:700; color:#3b82f6; font-size:11px;">חלבון</th>
         <th style="padding:8px 4px; text-align:center; font-weight:700; color:#f59e0b; font-size:11px;">פחמ'</th>
         <th style="padding:8px 4px; text-align:center; font-weight:700; color:#ec4899; font-size:11px;">שומן</th>
+        <th style="padding:8px 4px; text-align:center; font-weight:700; color:var(--muted); font-size:11px; width:30px;"></th>
       </tr>
     </thead>
     <tbody>`;
   items.forEach((e, i) => {
     tbl += `<tr style="border-top:1px solid var(--border); ${i%2?'background:#fafbfd;':''}">
       <td style="padding:7px 5px; color:var(--muted); font-size:11px; white-space:nowrap;">${e.time||'-'}</td>
-      <td style="padding:7px 5px; font-weight:600;">${e.name}</td>
+      <td style="padding:7px 5px; font-weight:600;">${e.name}${e.planned?' <span style="font-size:9px; color:#7c3aed;">🔮</span>':''}</td>
       <td style="padding:7px 4px; text-align:center; color:var(--muted); font-size:11px;">${e.grams}ג'</td>
       <td style="padding:7px 4px; text-align:center; font-weight:800; color:var(--accent);">${e.calories}</td>
       <td style="padding:7px 4px; text-align:center; font-size:11px;">${e.prot||0}</td>
       <td style="padding:7px 4px; text-align:center; font-size:11px;">${e.carb||0}</td>
       <td style="padding:7px 4px; text-align:center; font-size:11px;">${e.fat||0}</td>
+      <td style="padding:7px 2px; text-align:center;"><button onclick="deleteEntryFromDay('${date}','${e.id}',event)" style="background:transparent; border:none; cursor:pointer; color:var(--danger); font-size:14px; padding:0; line-height:1;">✕</button></td>
     </tr>`;
   });
   tbl += `<tr style="background:var(--accent-light); font-weight:800; border-top:2px solid var(--accent-dim);">
@@ -2121,6 +2294,7 @@ function openDayDetail(date) {
     <td style="padding:9px 4px; text-align:center; color:#3b82f6;">${tot.prot}ג'</td>
     <td style="padding:9px 4px; text-align:center; color:#f59e0b;">${tot.carb}ג'</td>
     <td style="padding:9px 4px; text-align:center; color:#ec4899;">${tot.fat}ג'</td>
+    <td></td>
   </tr>`;
   tbl += `</tbody></table>`;
   document.getElementById('day-detail-table').innerHTML = tbl;
@@ -2145,14 +2319,14 @@ function openDayDetail(date) {
   if (isOver) {
     box.style.background = 'var(--danger-light)';
     box.style.border = '1.5px solid #fecaca';
-    document.getElementById('day-balance-label').textContent = '⚠️ חרגת מהיעד (יתרה חיובית)';
+    document.getElementById('day-balance-label').textContent = isFuture ? '🔮 חריגה מתוכננת' : '⚠️ חרגת מהיעד (יתרה חיובית)';
     document.getElementById('day-balance-label').style.color = 'var(--danger)';
     document.getElementById('day-balance-diff').style.color = 'var(--danger)';
     document.getElementById('day-balance-diff').textContent = '+'+n(diff)+' קל\'';
   } else {
     box.style.background = 'var(--accent-light)';
     box.style.border = '1.5px solid var(--accent-dim)';
-    document.getElementById('day-balance-label').textContent = '✓ מתחת ליעד (יתרה שלילית)';
+    document.getElementById('day-balance-label').textContent = isFuture ? '🔮 תכנון בטווח היעד' : '✓ מתחת ליעד (יתרה שלילית)';
     document.getElementById('day-balance-label').style.color = 'var(--accent)';
     document.getElementById('day-balance-diff').style.color = 'var(--accent)';
     document.getElementById('day-balance-diff').textContent = n(diff)+' קל\'';
@@ -2162,6 +2336,37 @@ function openDayDetail(date) {
   document.getElementById('day-balance-pct').textContent = pct+'%';
 
   openModal('day-detail');
+}
+
+function addToCurrentDay() {
+  const date = _currentDayExport;
+  if (!date) return;
+  closeModal();
+  openAddModal(date);
+}
+
+async function deleteEntryFromDay(date, entryId, ev) {
+  if (ev) { ev.stopPropagation(); }
+  const today = todayStr();
+  if (date === today) {
+    entries = entries.filter(e => e.id !== entryId);
+    await fbSet('today', {date, entries});
+  } else {
+    if (!Array.isArray(history)) history = history ? Object.values(history).filter(Boolean) : [];
+    const idx = history.findIndex(d => d.date === date);
+    if (idx >= 0) {
+      const day = {...history[idx]};
+      day.entries = (day.entries||[]).filter(e => e.id !== entryId);
+      day.totalCalories = day.entries.reduce((s,e)=>s+(e.calories||0), 0);
+      if (day.entries.length === 0) history.splice(idx, 1);
+      else history[idx] = day;
+      await fbSet('history', history);
+    }
+  }
+  // Refresh day detail (will close + reopen with fresh data)
+  renderDashboard();
+  renderHistory();
+  openDayDetail(date);
 }
 
 function openExportMenu() { openModal('export'); }
@@ -2609,6 +2814,7 @@ async function resizeImage(file, maxDim, quality) {
 function showPendingImagePreview() {
   const preview = document.getElementById('ai-pending-image');
   const attachBtn = document.getElementById('ai-attach-btn');
+  const cameraBtn = document.getElementById('ai-camera-btn');
   if (pendingImage) {
     preview.innerHTML = `<div style="display:flex; align-items:center; gap:10px; padding:8px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; margin:0 14px 6px;">
       <img src="${pendingImage.previewUrl}" style="width:46px; height:46px; object-fit:cover; border-radius:9px; border:1px solid #fff;">
@@ -2617,10 +2823,12 @@ function showPendingImagePreview() {
     </div>`;
     preview.style.display = 'block';
     if (attachBtn) attachBtn.classList.add('has-image');
+    if (cameraBtn) cameraBtn.classList.add('has-image');
   } else {
     preview.style.display = 'none';
     preview.innerHTML = '';
     if (attachBtn) attachBtn.classList.remove('has-image');
+    if (cameraBtn) cameraBtn.classList.remove('has-image');
   }
 }
 
