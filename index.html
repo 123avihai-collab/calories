@@ -14,6 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 
 <!-- PWA Manifest (inline via blob) -->
 <script>
@@ -243,6 +244,9 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 .ai-send-btn { width:42px; height:42px; border-radius:12px; border:none; background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(99,102,241,0.35); flex-shrink:0; transition:transform 0.15s,opacity 0.15s; }
 .ai-send-btn:active { transform:scale(0.93); }
 .ai-send-btn:disabled { opacity:0.45; cursor:default; }
+.ai-attach-btn { width:42px; height:42px; border-radius:12px; border:1.5px solid var(--border); background:var(--card2); color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.15s; font-family:inherit; }
+.ai-attach-btn:active { transform:scale(0.93); background:var(--card); }
+.ai-attach-btn.has-image { background:#eef2ff; border-color:#c7d2fe; color:#6366f1; }
 .quick-prompts { display:flex; gap:7px; overflow-x:auto; padding:8px 16px 6px; border-bottom:1px solid var(--border); background:var(--card); }
 .quick-prompts::-webkit-scrollbar { display:none; }
 .qp-chip { white-space:nowrap; padding:6px 12px; border-radius:20px; border:1.5px solid #c7d2fe; background:#eef2ff; color:#6366f1; font-size:12px; font-weight:600; cursor:pointer; flex-shrink:0; }
@@ -407,31 +411,81 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 
   <!-- HISTORY SCREEN -->
   <div id="screen-history" class="screen">
-    <div style="padding:20px 20px 0; margin-bottom:18px;">
-      <h2 style="font-size:18px; font-weight:700;">היסטוריה שבועית 📅</h2>
+    <!-- Header with week picker -->
+    <div style="padding:20px 20px 0; margin-bottom:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <h2 style="font-size:18px; font-weight:700;">היסטוריה שבועית 📅</h2>
+        <button class="btn btn-sm btn-blue" onclick="openExportMenu()" style="padding:7px 14px;">📥 ייצא</button>
+      </div>
+      <!-- Week navigator -->
+      <div style="display:flex; align-items:center; justify-content:space-between; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:8px 12px; box-shadow:0 2px 8px rgba(30,60,120,0.06);">
+        <button onclick="changeWeek(1)" style="background:var(--card2); border:1px solid var(--border); border-radius:10px; width:38px; height:38px; cursor:pointer; font-size:18px; font-weight:700; color:var(--text);">▶</button>
+        <div style="text-align:center;">
+          <div style="font-size:15px; font-weight:800;" id="hist-week-label">-</div>
+          <button onclick="goToCurrentWeek()" style="background:transparent; border:none; font-size:11px; color:var(--blue); cursor:pointer; font-family:inherit; padding:2px 8px;" id="hist-today-btn">חזור לשבוע הנוכחי</button>
+        </div>
+        <button onclick="changeWeek(-1)" style="background:var(--card2); border:1px solid var(--border); border-radius:10px; width:38px; height:38px; cursor:pointer; font-size:18px; font-weight:700; color:var(--text);">◀</button>
+      </div>
     </div>
+
     <div style="padding:0 20px;">
-      <div style="display:flex; gap:10px; margin-bottom:18px;">
-        <div class="card" style="flex:1; text-align:center; padding:14px;">
-          <div style="font-size:22px; font-weight:800; color:var(--accent);" id="hist-avg">-</div>
-          <div style="font-size:11px; color:var(--muted); margin-top:3px;">ממוצע יומי</div>
+      <!-- Weekly totals (4 cards) -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:6px; margin-bottom:12px;">
+        <div class="card-sm" style="text-align:center; padding:10px 4px;">
+          <div style="font-size:14px; font-weight:800; color:var(--accent);" id="hist-cal-total">0</div>
+          <div style="font-size:9px; color:var(--muted); margin-top:2px; font-weight:600;">סה"כ קל'</div>
         </div>
-        <div class="card" style="flex:1; text-align:center; padding:14px;">
-          <div style="font-size:22px; font-weight:800; color:var(--blue);" id="hist-ontarget">-</div>
-          <div style="font-size:11px; color:var(--muted); margin-top:3px;">ימים ביעד</div>
+        <div class="card-sm" style="text-align:center; padding:10px 4px;">
+          <div style="font-size:14px; font-weight:800; color:#3b82f6;" id="hist-prot-total">0ג'</div>
+          <div style="font-size:9px; color:#3b82f6; margin-top:2px; font-weight:600;">💪 חלבון</div>
+        </div>
+        <div class="card-sm" style="text-align:center; padding:10px 4px;">
+          <div style="font-size:14px; font-weight:800; color:#f59e0b;" id="hist-carb-total">0ג'</div>
+          <div style="font-size:9px; color:#f59e0b; margin-top:2px; font-weight:600;">🌾 פחמ'</div>
+        </div>
+        <div class="card-sm" style="text-align:center; padding:10px 4px;">
+          <div style="font-size:14px; font-weight:800; color:#ec4899;" id="hist-fat-total">0ג'</div>
+          <div style="font-size:9px; color:#ec4899; margin-top:2px; font-weight:600;">🥑 שומן</div>
         </div>
       </div>
-      <!-- Simple bar chart -->
-      <div class="card" style="padding:16px; margin-bottom:18px;">
-        <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:12px;">7 ימים אחרונים</div>
-        <div id="bar-chart" style="display:flex; align-items:flex-end; gap:6px; height:120px; direction:ltr;"></div>
-        <div id="bar-labels" style="display:flex; gap:6px; margin-top:6px; direction:ltr;"></div>
+
+      <!-- Days list -->
+      <div style="font-size:11px; color:var(--muted); margin-bottom:8px; text-align:center;">לחץ על יום לראות פירוט מלא</div>
+      <div id="hist-days-list"></div>
+
+      <!-- Weekly summary -->
+      <div id="hist-summary" class="card" style="margin-top:14px; padding:16px; background:linear-gradient(135deg,#f0f9ff,#fefce8); border-color:#bfdbfe; display:none;">
+        <div style="font-size:13px; font-weight:800; color:var(--text); margin-bottom:12px;">📊 סיכום שבועי</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+          <div style="background:#fff; border-radius:10px; padding:10px; text-align:center;">
+            <div style="font-size:18px; font-weight:800; color:var(--accent);" id="hist-week-cal-total">0</div>
+            <div style="font-size:10px; color:var(--muted); margin-top:2px;">סה"כ קלוריות</div>
+          </div>
+          <div style="background:#fff; border-radius:10px; padding:10px; text-align:center;">
+            <div style="font-size:18px; font-weight:800; color:var(--blue);" id="hist-week-target">0</div>
+            <div style="font-size:10px; color:var(--muted); margin-top:2px;">יעד שבועי</div>
+          </div>
+          <div style="background:#fff; border-radius:10px; padding:10px; text-align:center;">
+            <div style="font-size:18px; font-weight:800; color:var(--purple);" id="hist-week-avg">0</div>
+            <div style="font-size:10px; color:var(--muted); margin-top:2px;">ממוצע יומי</div>
+          </div>
+          <div style="background:#fff; border-radius:10px; padding:10px; text-align:center;">
+            <div style="font-size:18px; font-weight:800; color:var(--teal);" id="hist-week-tracked">0/7</div>
+            <div style="font-size:10px; color:var(--muted); margin-top:2px;">ימים מתועדים</div>
+          </div>
+        </div>
+        <div style="background:#fff; border-radius:10px; padding:12px; text-align:center;">
+          <div style="font-size:11px; color:var(--muted); font-weight:600;" id="hist-week-diff-label">יתרה שבועית</div>
+          <div style="font-size:26px; font-weight:800; margin:4px 0;" id="hist-week-diff">0</div>
+          <div style="font-size:11px; color:var(--muted);">ימים ביעד: <strong style="color:var(--accent);" id="hist-week-ontarget">0/0</strong></div>
+        </div>
       </div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <span style="font-size:14px; font-weight:700; color:var(--muted);">יומן מפורט</span>
-        <button class="btn btn-sm btn-blue" onclick="exportCSV()">📥 ייצא Excel</button>
+
+      <!-- Empty state -->
+      <div id="hist-empty" style="text-align:center; padding:24px; color:var(--muted); display:none;">
+        <div style="font-size:36px; margin-bottom:8px;">📅</div>
+        <div style="font-size:13px;">אין נתונים בשבוע זה</div>
       </div>
-      <div id="history-list"></div>
     </div>
   </div>
 
@@ -572,6 +626,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       </div>
     </div>
     <div class="quick-prompts">
+      <button class="qp-chip" onclick="document.getElementById('ai-img-input').click()" style="background:#fef3c7; border-color:#fde68a; color:#d97706;">📷 צלם מאכל</button>
       <button class="qp-chip" onclick="sendQuickPrompt('כמה קלוריות בחזה עוף 150 גרם?')">🍗 חזה עוף</button>
       <button class="qp-chip" onclick="sendQuickPrompt('כמה קלוריות בשוורמה עוף בפיתה?')">🥙 שוורמה</button>
       <button class="qp-chip" onclick="sendQuickPrompt('כמה קלוריות בביצה קשה?')">🥚 ביצה</button>
@@ -580,9 +635,12 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       <button class="qp-chip" onclick="sendQuickPrompt('כמה חלבון יש ב-100 גרם סלמון?')">🐟 סלמון</button>
     </div>
     <div class="ai-messages" id="ai-messages"></div>
+    <input type="file" id="ai-img-input" accept="image/*" style="display:none" onchange="handleAiImage(this)">
+    <div id="ai-pending-image" style="display:none;"></div>
     <div class="ai-input-bar">
+      <button class="ai-attach-btn" id="ai-attach-btn" onclick="document.getElementById('ai-img-input').click()" title="צרף תמונה של מאכל">📷</button>
       <div class="ai-input-wrap">
-        <textarea class="ai-input" id="ai-input" placeholder="שאל על מאכל או קלוריות..." rows="1"
+        <textarea class="ai-input" id="ai-input" placeholder="שאל על מאכל או צרף תמונה..." rows="1"
           onkeydown="handleAiKeydown(event)" oninput="autoResizeAi(this)"></textarea>
       </div>
       <button class="ai-send-btn" id="ai-send-btn" onclick="sendAiMessage()">➤</button>
@@ -808,6 +866,99 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       placeholder='{"apiKey":"...","authDomain":"...","databaseURL":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'
       style="font-size:12px; font-family:monospace; resize:vertical; margin-bottom:12px;"></textarea>
     <button class="btn btn-w" style="background:linear-gradient(135deg,#f97316,#ea580c);" onclick="saveFirebaseConfig()">🔥 הפעל סנכרון</button>
+  </div>
+</div>
+
+<!-- DAY DETAIL MODAL -->
+<div class="modal-overlay" id="modal-day-detail">
+  <div class="modal-box" style="max-width:560px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <div>
+        <h3 style="font-size:17px; font-weight:800;" id="day-detail-title">-</h3>
+        <div style="font-size:11px; color:var(--muted); margin-top:2px;" id="day-detail-subtitle"></div>
+      </div>
+      <button onclick="closeModal()" style="background:var(--card2); border:1px solid var(--border); border-radius:10px; width:32px; height:32px; cursor:pointer; font-size:16px;">✕</button>
+    </div>
+
+    <!-- Empty state -->
+    <div id="day-detail-empty" style="display:none; text-align:center; padding:28px; color:var(--muted);">
+      <div style="font-size:40px; margin-bottom:8px;">🍽️</div>
+      <div style="font-size:14px;">לא הוזנו מאכלים ביום זה</div>
+    </div>
+
+    <!-- Content -->
+    <div id="day-detail-content">
+      <!-- Foods table -->
+      <div style="overflow-x:auto; margin-bottom:14px; border:1px solid var(--border); border-radius:12px;">
+        <div id="day-detail-table"></div>
+      </div>
+
+      <!-- Macros bars -->
+      <div class="card-sm" style="margin-bottom:12px; padding:12px;">
+        <div style="font-size:12px; font-weight:700; color:var(--muted); margin-bottom:10px;">🧬 מאקרו ביום זה</div>
+        <div style="display:flex; gap:10px;">
+          <div style="flex:1;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <span style="font-size:10px; font-weight:700; color:#3b82f6;">💪 חלבון</span>
+              <span style="font-size:12px; font-weight:800; color:#3b82f6;" id="day-prot">0ג'</span>
+            </div>
+            <div class="progress-track"><div class="progress-bar" id="day-prot-bar" style="width:0%; background:linear-gradient(90deg,#3b82f6,#60a5fa);"></div></div>
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <span style="font-size:10px; font-weight:700; color:#f59e0b;">🌾 פחמ'</span>
+              <span style="font-size:12px; font-weight:800; color:#f59e0b;" id="day-carb">0ג'</span>
+            </div>
+            <div class="progress-track"><div class="progress-bar" id="day-carb-bar" style="width:0%; background:linear-gradient(90deg,#f59e0b,#fcd34d);"></div></div>
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <span style="font-size:10px; font-weight:700; color:#ec4899;">🥑 שומן</span>
+              <span style="font-size:12px; font-weight:800; color:#ec4899;" id="day-fat">0ג'</span>
+            </div>
+            <div class="progress-track"><div class="progress-bar" id="day-fat-bar" style="width:0%; background:linear-gradient(90deg,#ec4899,#f9a8d4);"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Balance summary -->
+      <div id="day-balance-box" style="padding:14px; border-radius:12px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div style="font-size:12px; font-weight:700;" id="day-balance-label">יתרה</div>
+          <div style="font-size:24px; font-weight:800;" id="day-balance-diff">0</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <div style="flex:1; background:#fff; border-radius:8px; padding:8px; text-align:center;">
+            <div style="font-size:10px; color:var(--muted);">נצרכו</div>
+            <div style="font-size:14px; font-weight:800;" id="day-balance-consumed">0</div>
+          </div>
+          <div style="flex:1; background:#fff; border-radius:8px; padding:8px; text-align:center;">
+            <div style="font-size:10px; color:var(--muted);">יעד</div>
+            <div style="font-size:14px; font-weight:800;" id="day-balance-target">0</div>
+          </div>
+          <div style="flex:1; background:#fff; border-radius:8px; padding:8px; text-align:center;">
+            <div style="font-size:10px; color:var(--muted);">% מהיעד</div>
+            <div style="font-size:14px; font-weight:800;" id="day-balance-pct">0%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export day button -->
+      <button class="btn btn-w btn-blue" onclick="exportXLSX('day')">📥 ייצא יום זה לאקסל</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MENU MODAL -->
+<div class="modal-overlay" id="modal-export">
+  <div class="modal-box">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 style="font-size:17px; font-weight:800;">📥 ייצוא לאקסל</h3>
+      <button onclick="closeModal()" style="background:var(--card2); border:1px solid var(--border); border-radius:10px; width:32px; height:32px; cursor:pointer; font-size:16px;">✕</button>
+    </div>
+    <div style="font-size:12px; color:var(--muted); margin-bottom:14px;">בחר מה לייצא — תקבל קובץ XLSX עם 2 גליונות: סיכום יומי + פירוט מאכלים</div>
+    <button class="btn btn-w btn-blue" style="margin-bottom:10px;" onclick="exportXLSX('week')">📅 ייצא רק את השבוע הנוכחי</button>
+    <button class="btn btn-w" style="background:linear-gradient(135deg,#7c3aed,#6d28d9);" onclick="exportXLSX('all')">📚 ייצא את כל ההיסטוריה</button>
   </div>
 </div>
 
@@ -1286,13 +1437,21 @@ function renderFoodList() {
 function renderQuickAdd() {
   const sec = document.getElementById('quick-add-section');
   const strip = document.getElementById('quick-strip');
+  // Safe coercion (Firebase listener may sometimes return object)
+  if (!Array.isArray(pantry)) pantry = pantry ? Object.values(pantry).filter(Boolean) : [];
   if (!pantry.length) { sec.style.display='none'; return; }
   sec.style.display='block';
-  strip.innerHTML = pantry.slice(0,10).map(item=>`
-    <button class="chip" onclick="quickAdd('${item.id}')" id="chip-${item.id}">
+  strip.innerHTML = pantry.slice(0,15).map(item => {
+    const c = item.count || 1;
+    const badge = c >= 2
+      ? `<span style="font-size:9px;color:#fff;background:linear-gradient(135deg,var(--accent),#15803d);border-radius:8px;padding:2px 6px;font-weight:800;line-height:1;">×${c}</span>`
+      : '';
+    return `<button class="chip" onclick="quickAdd('${item.id}')" id="chip-${item.id}">
+      ${badge}
       <span style="font-size:13px;font-weight:700;">${item.name}</span>
       <span style="font-size:10px;color:var(--muted);">${item.calories}קל׳</span>
-    </button>`).join('');
+    </button>`;
+  }).join('');
 }
 
 // ══════════════════════════════════════════
@@ -1351,23 +1510,55 @@ async function quickAdd(pantryId) {
   if (!item) return;
   const chip = document.getElementById('chip-'+pantryId);
   if (chip) { chip.style.borderColor='var(--accent)'; chip.style.background='var(--accent-light)'; }
+  // addEntry internally calls saveToPantry — do NOT call it again (caused count to double)
   await addEntry(item.name, item.cal100||0, item.grams, item.calories);
-  await saveToPantry(item);
   setTimeout(()=>{ if(chip){chip.style.borderColor='';chip.style.background='';} },800);
 }
 
 // ══════════════════════════════════════════
 // PANTRY
 // ══════════════════════════════════════════
+function normalizeName(name) {
+  return (name || '').trim().replace(/\s+/g, ' ');
+}
+
 async function saveToPantry(item) {
-  if (!Array.isArray(pantry)) pantry=[];
-  const idx = pantry.findIndex(p=>p.name===item.name);
-  if (idx>=0) {
-    pantry[idx] = {...pantry[idx], count:(pantry[idx].count||0)+1, lastUsed:Date.now(), grams:item.grams, calories:item.calories};
+  // Safe coercion to array (Firebase returns object on rehydrate)
+  if (!Array.isArray(pantry)) pantry = pantry ? Object.values(pantry).filter(Boolean) : [];
+
+  const cleanName = normalizeName(item.name);
+  if (!cleanName) return;
+
+  const idx = pantry.findIndex(p => normalizeName(p.name) === cleanName);
+  if (idx >= 0) {
+    // Existing item — increment count, refresh grams/calories, keep existing cal100 if new is missing
+    pantry[idx] = {
+      ...pantry[idx],
+      name:     cleanName,
+      count:    (pantry[idx].count || 0) + 1,
+      lastUsed: Date.now(),
+      grams:    item.grams,
+      calories: item.calories,
+      cal100:   item.cal100 || pantry[idx].cal100 || 0
+    };
   } else {
-    pantry = [...pantry, {id:uid(), name:item.name, cal100:item.cal100||0, grams:item.grams, calories:item.calories, count:1, lastUsed:Date.now()}];
+    // New item
+    pantry = [...pantry, {
+      id: uid(),
+      name: cleanName,
+      cal100: item.cal100 || 0,
+      grams: item.grams,
+      calories: item.calories,
+      count: 1,
+      lastUsed: Date.now()
+    }];
   }
-  pantry.sort((a,b)=>(b.count||0)-(a.count||0));
+  // Sort: most-used first, ties broken by most-recent
+  pantry.sort((a,b) => {
+    const dc = (b.count||0) - (a.count||0);
+    if (dc !== 0) return dc;
+    return (b.lastUsed||0) - (a.lastUsed||0);
+  });
   await fbSet('pantry', pantry);
 }
 
@@ -1381,6 +1572,7 @@ async function removeFromPantry(id) {
 function renderPantryTab() {
   const list = document.getElementById('pantry-list');
   const empty = document.getElementById('pantry-empty');
+  if (!Array.isArray(pantry)) pantry = pantry ? Object.values(pantry).filter(Boolean) : [];
   if (!pantry.length) { empty.style.display='block'; list.innerHTML=''; return; }
   empty.style.display='none';
   list.innerHTML = pantry.map(item=>`
@@ -1654,63 +1846,453 @@ function stopScan() {
 }
 
 // ══════════════════════════════════════════
-// HISTORY
+// HISTORY — WEEKLY VIEW
 // ══════════════════════════════════════════
-function renderHistory() {
-  const last7 = [...history].slice(-7).reverse();
-  const avg = last7.length ? Math.round(last7.reduce((s,d)=>s+d.totalCalories,0)/last7.length) : 0;
-  const onTarget = last7.filter(d=>d.totalCalories<=d.target*1.05).length;
-  document.getElementById('hist-avg').textContent = avg?n(avg)+' קל׳':'-';
-  document.getElementById('hist-ontarget').textContent = last7.length?`${onTarget}/${last7.length}`:'-';
+let currentWeekStart = getWeekStart(new Date());
 
-  // Bar chart
-  const chartData = [...history].slice(-7);
-  const maxCal = Math.max(...chartData.map(d=>d.totalCalories), 1);
-  const chartEl = document.getElementById('bar-chart');
-  const labelsEl = document.getElementById('bar-labels');
-  chartEl.innerHTML = chartData.map(d=>{
-    const h = Math.round((d.totalCalories/maxCal)*100);
-    const col = d.totalCalories>d.target*1.05 ? 'var(--danger)' : 'var(--accent)';
-    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-      <div style="font-size:10px;color:var(--muted);">${d.totalCalories>999?(d.totalCalories/1000).toFixed(1)+'k':d.totalCalories}</div>
-      <div style="width:100%;background:${col};border-radius:4px 4px 0 0;height:${h}px;min-height:2px;"></div>
-    </div>`;}).join('');
-  labelsEl.innerHTML = chartData.map(d=>`<div style="flex:1;text-align:center;font-size:10px;color:var(--muted);">${shortDay(d.date)}</div>`).join('');
-
-  // List
-  const listEl = document.getElementById('history-list');
-  if (!last7.length) { listEl.innerHTML='<div style="text-align:center;color:var(--muted);padding:32px;"><div style="font-size:40px;margin-bottom:8px;">📅</div><div>אין היסטוריה עדיין</div></div>'; return; }
-  listEl.innerHTML = last7.map(day=>{
-    const pct=Math.round(day.totalCalories/day.target*100);
-    const col=pct>105?'var(--danger)':pct>90?'var(--accent)':'var(--muted)';
-    return `<div class="card-sm" style="margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-        <div>
-          <div style="font-size:14px;font-weight:700;">${heDay(day.date)}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${day.entries?.length||0} מאכלים</div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-size:20px;font-weight:800;color:${col};">${n(day.totalCalories)}</div>
-          <div style="font-size:10px;color:var(--muted);">/ ${n(day.target)} קל׳</div>
-        </div>
-      </div>
-      <div class="progress-track" style="margin-top:10px;">
-        <div class="progress-bar" style="width:${Math.min(pct,100)}%;background:${col};"></div>
-      </div>
-    </div>`;}).join('');
+function getWeekStart(date) {
+  const d = new Date(date);
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() - d.getDay()); // Sunday
+  return d;
 }
 
-function exportCSV() {
-  let csv = '\uFEFF"תאריך","יום","קלוריות שנצרכו","יעד","הפרש","% יעד","מאכלים"\n';
-  history.forEach(d=>{
-    const foods=(d.entries||[]).map(e=>`${e.name}(${e.calories})`).join('|');
-    const diff=d.totalCalories-d.target;
-    const pct=Math.round(d.totalCalories/d.target*100);
-    csv+=`"${d.date}","${heDay(d.date).split(' ')[0]}","${d.totalCalories}","${d.target}","${diff}","${pct}%","${foods}"\n`;
+function getWeekDays(start) {
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    days.push(`${yyyy}-${mm}-${dd}`);
+  }
+  return days;
+}
+
+function getAllDays() {
+  // Combine history + today (if has entries)
+  const all = [...(Array.isArray(history) ? history : [])];
+  if (entries && entries.length > 0) {
+    const t = todayStr();
+    const obj = {
+      date: t,
+      entries: entries,
+      totalCalories: entries.reduce((s,e)=>s+e.calories,0),
+      target: profile?.targetCalories || 2000
+    };
+    const idx = all.findIndex(d => d.date === t);
+    if (idx >= 0) all[idx] = obj;
+    else all.push(obj);
+  }
+  return all;
+}
+
+function getWeekData(start) {
+  const days = getWeekDays(start);
+  const all = getAllDays();
+  return days.map(d => {
+    const found = all.find(x => x.date === d);
+    return found || {date:d, entries:[], totalCalories:0, target:profile?.targetCalories||2000};
   });
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-  a.download=`מעקב-קלוריות-${todayStr()}.csv`; a.click();
+}
+
+function calcDayMacros(day) {
+  return (day.entries || []).reduce((acc, e) => ({
+    cal: acc.cal + (e.calories||0),
+    prot: acc.prot + (e.prot||0),
+    carb: acc.carb + (e.carb||0),
+    fat: acc.fat + (e.fat||0)
+  }), {cal:0, prot:0, carb:0, fat:0});
+}
+
+function changeWeek(delta) {
+  // delta: +1 = next week, -1 = previous week (RTL: ▶ = next, ◀ = prev)
+  currentWeekStart.setDate(currentWeekStart.getDate() + delta*7);
+  renderHistory();
+}
+
+function goToCurrentWeek() {
+  currentWeekStart = getWeekStart(new Date());
+  renderHistory();
+}
+
+function formatWeekRange(start) {
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const monthNames = ['ינו','פבר','מרץ','אפר','מאי','יונ','יול','אוג','ספט','אוק','נוב','דצמ'];
+  // If same month
+  if (start.getMonth() === end.getMonth()) {
+    return `${start.getDate()}–${end.getDate()} ${monthNames[start.getMonth()]} ${start.getFullYear()}`;
+  }
+  return `${start.getDate()} ${monthNames[start.getMonth()]} – ${end.getDate()} ${monthNames[end.getMonth()]} ${end.getFullYear()}`;
+}
+
+function renderHistory() {
+  document.getElementById('hist-week-label').textContent = formatWeekRange(currentWeekStart);
+
+  // Show "back to current week" button only if not viewing current week
+  const todayWeekStart = getWeekStart(new Date());
+  const isCurrent = currentWeekStart.getTime() === todayWeekStart.getTime();
+  document.getElementById('hist-today-btn').style.display = isCurrent ? 'none' : 'inline';
+
+  const weekData = getWeekData(currentWeekStart);
+
+  // Calculate weekly totals
+  const totals = weekData.reduce((acc, day) => {
+    const m = calcDayMacros(day);
+    return {
+      cal:    acc.cal + m.cal,
+      prot:   acc.prot + m.prot,
+      carb:   acc.carb + m.carb,
+      fat:    acc.fat + m.fat,
+      target: acc.target + (day.target || 2000),
+      tracked: acc.tracked + (m.cal > 0 ? 1 : 0),
+      onTarget: acc.onTarget + (m.cal > 0 && m.cal <= day.target * 1.05 ? 1 : 0)
+    };
+  }, {cal:0, prot:0, carb:0, fat:0, target:0, tracked:0, onTarget:0});
+
+  // 4 stat cards (weekly totals)
+  document.getElementById('hist-cal-total').textContent  = n(totals.cal);
+  document.getElementById('hist-prot-total').textContent = n(totals.prot)+'ג\'';
+  document.getElementById('hist-carb-total').textContent = n(totals.carb)+'ג\'';
+  document.getElementById('hist-fat-total').textContent  = n(totals.fat)+'ג\'';
+
+  // Days list
+  renderWeekDaysList(weekData);
+
+  // Weekly summary
+  renderWeekSummary(totals);
+}
+
+function renderWeekDaysList(weekData) {
+  const dayNames = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const todayStrVal = todayStr();
+  const list = document.getElementById('hist-days-list');
+
+  list.innerHTML = weekData.map((day, i) => {
+    const m = calcDayMacros(day);
+    const isToday = day.date === todayStrVal;
+    const isFuture = new Date(day.date+'T23:59:59') > new Date();
+    const dt = new Date(day.date+'T12:00:00');
+    const dayNum = dt.getDate();
+    const monthNum = dt.getMonth() + 1;
+
+    let bg = 'var(--card)';
+    let border = '1px solid var(--border)';
+    let calColor = 'var(--dim)';
+    let badge = '';
+
+    if (isFuture) {
+      bg = '#fafbfd';
+      calColor = 'var(--dim)';
+    } else if (m.cal > 0) {
+      const pct = m.cal / day.target;
+      if (pct > 1.10) { calColor = 'var(--danger)'; badge = '⚠️ חרגת'; }
+      else if (pct >= 0.85) { calColor = 'var(--accent)'; badge = '✓ ביעד'; }
+      else { calColor = 'var(--warning)'; badge = '↓ נמוך'; }
+    }
+
+    if (isToday) border = '2px solid var(--blue)';
+
+    const onclick = isFuture ? '' : `onclick="openDayDetail('${day.date}')"`;
+    const cursor = isFuture ? 'default' : 'pointer';
+
+    const todayBadge = isToday ? '<span style="font-size:10px; color:#fff; background:var(--blue); border-radius:8px; padding:2px 7px; font-weight:700; margin-right:5px;">היום</span>' : '';
+    const statusText = badge || (isFuture ? 'עתיד' : 'ללא תיעוד');
+    const statusColor = badge ? calColor : 'var(--dim)';
+
+    return `<div ${onclick} style="background:${bg}; border:${border}; border-radius:14px; padding:12px 14px; margin-bottom:8px; cursor:${cursor}; transition:transform 0.1s; box-shadow:0 1px 4px rgba(30,60,120,0.04);">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:${m.cal>0?'10px':'0'};">
+        <div>
+          <div style="font-size:14px; font-weight:700;">${dayNames[i]} <span style="color:var(--muted); font-weight:600; font-size:13px;">${dayNum}/${monthNum}</span> ${todayBadge}</div>
+          <div style="font-size:11px; color:${statusColor}; font-weight:700; margin-top:2px;">${statusText}</div>
+        </div>
+        <div style="text-align:left;">
+          <div style="font-size:20px; font-weight:800; color:${calColor}; line-height:1;">${m.cal>0 ? n(m.cal) : '—'}</div>
+          ${m.cal>0 ? `<div style="font-size:10px; color:var(--muted); margin-top:3px;">/ ${n(day.target)} קל'</div>` : ''}
+        </div>
+      </div>
+      ${m.cal>0 ? `<div style="display:flex; gap:6px; padding-top:10px; border-top:1px dashed var(--border);">
+        <div style="flex:1; text-align:center; background:#dbeafe; border-radius:8px; padding:5px 2px;">
+          <div style="font-size:12px; font-weight:800; color:#3b82f6; line-height:1;">${m.prot}<span style="font-size:9px;">ג'</span></div>
+          <div style="font-size:9px; color:#3b82f6; margin-top:2px; font-weight:600;">💪 חלבון</div>
+        </div>
+        <div style="flex:1; text-align:center; background:#fef3c7; border-radius:8px; padding:5px 2px;">
+          <div style="font-size:12px; font-weight:800; color:#f59e0b; line-height:1;">${m.carb}<span style="font-size:9px;">ג'</span></div>
+          <div style="font-size:9px; color:#f59e0b; margin-top:2px; font-weight:600;">🌾 פחמ'</div>
+        </div>
+        <div style="flex:1; text-align:center; background:#fce7f3; border-radius:8px; padding:5px 2px;">
+          <div style="font-size:12px; font-weight:800; color:#ec4899; line-height:1;">${m.fat}<span style="font-size:9px;">ג'</span></div>
+          <div style="font-size:9px; color:#ec4899; margin-top:2px; font-weight:600;">🥑 שומן</div>
+        </div>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderWeekSummary(totals) {
+  const sumBox = document.getElementById('hist-summary');
+  const empty = document.getElementById('hist-empty');
+  if (totals.cal === 0) {
+    sumBox.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+  sumBox.style.display = 'block';
+  empty.style.display = 'none';
+
+  const diff = totals.cal - totals.target;
+  const isOver = diff > 0;
+  const avgDaily = totals.tracked ? Math.round(totals.cal / totals.tracked) : 0;
+
+  document.getElementById('hist-week-cal-total').textContent = n(totals.cal);
+  document.getElementById('hist-week-target').textContent    = n(totals.target);
+  document.getElementById('hist-week-avg').textContent       = n(avgDaily);
+  document.getElementById('hist-week-tracked').textContent   = `${totals.tracked}/7`;
+  document.getElementById('hist-week-ontarget').textContent  = `${totals.onTarget}/${totals.tracked}`;
+
+  const diffEl = document.getElementById('hist-week-diff');
+  diffEl.textContent = (isOver ? '+' : '') + n(diff) + ' קל\'';
+  diffEl.style.color = isOver ? 'var(--danger)' : 'var(--accent)';
+
+  const lblEl = document.getElementById('hist-week-diff-label');
+  lblEl.textContent = isOver ? '⚠️ חריגה שבועית' : '✓ מתחת ליעד השבועי';
+  lblEl.style.color = isOver ? 'var(--danger)' : 'var(--accent)';
+}
+
+let _currentDayExport = null;
+
+function openDayDetail(date) {
+  const day = getAllDays().find(d => d.date === date) || {date, entries:[], target:profile?.targetCalories||2000};
+  document.getElementById('day-detail-title').textContent = heDay(date);
+  _currentDayExport = date;
+
+  const items = day.entries || [];
+
+  if (items.length === 0) {
+    document.getElementById('day-detail-empty').style.display = 'block';
+    document.getElementById('day-detail-content').style.display = 'none';
+    document.getElementById('day-detail-subtitle').textContent = '';
+    openModal('day-detail');
+    return;
+  }
+
+  document.getElementById('day-detail-empty').style.display = 'none';
+  document.getElementById('day-detail-content').style.display = 'block';
+  document.getElementById('day-detail-subtitle').textContent = `${items.length} מאכלים`;
+
+  // Calc totals
+  const tot = items.reduce((a, e) => ({
+    cal: a.cal + (e.calories||0),
+    prot: a.prot + (e.prot||0),
+    carb: a.carb + (e.carb||0),
+    fat: a.fat + (e.fat||0)
+  }), {cal:0, prot:0, carb:0, fat:0});
+
+  // Build table
+  let tbl = `<table style="width:100%; border-collapse:collapse; font-size:12px;">
+    <thead>
+      <tr style="background:var(--card2);">
+        <th style="padding:8px 5px; text-align:right; font-weight:700; color:var(--muted); font-size:11px;">שעה</th>
+        <th style="padding:8px 5px; text-align:right; font-weight:700; color:var(--muted); font-size:11px;">מאכל</th>
+        <th style="padding:8px 4px; text-align:center; font-weight:700; color:var(--muted); font-size:11px;">משקל</th>
+        <th style="padding:8px 4px; text-align:center; font-weight:700; color:var(--muted); font-size:11px;">קל'</th>
+        <th style="padding:8px 4px; text-align:center; font-weight:700; color:#3b82f6; font-size:11px;">חלבון</th>
+        <th style="padding:8px 4px; text-align:center; font-weight:700; color:#f59e0b; font-size:11px;">פחמ'</th>
+        <th style="padding:8px 4px; text-align:center; font-weight:700; color:#ec4899; font-size:11px;">שומן</th>
+      </tr>
+    </thead>
+    <tbody>`;
+  items.forEach((e, i) => {
+    tbl += `<tr style="border-top:1px solid var(--border); ${i%2?'background:#fafbfd;':''}">
+      <td style="padding:7px 5px; color:var(--muted); font-size:11px; white-space:nowrap;">${e.time||'-'}</td>
+      <td style="padding:7px 5px; font-weight:600;">${e.name}</td>
+      <td style="padding:7px 4px; text-align:center; color:var(--muted); font-size:11px;">${e.grams}ג'</td>
+      <td style="padding:7px 4px; text-align:center; font-weight:800; color:var(--accent);">${e.calories}</td>
+      <td style="padding:7px 4px; text-align:center; font-size:11px;">${e.prot||0}</td>
+      <td style="padding:7px 4px; text-align:center; font-size:11px;">${e.carb||0}</td>
+      <td style="padding:7px 4px; text-align:center; font-size:11px;">${e.fat||0}</td>
+    </tr>`;
+  });
+  tbl += `<tr style="background:var(--accent-light); font-weight:800; border-top:2px solid var(--accent-dim);">
+    <td colspan="3" style="padding:9px 6px; text-align:right; color:var(--accent);">סה"כ</td>
+    <td style="padding:9px 4px; text-align:center; color:var(--accent); font-size:14px;">${tot.cal}</td>
+    <td style="padding:9px 4px; text-align:center; color:#3b82f6;">${tot.prot}ג'</td>
+    <td style="padding:9px 4px; text-align:center; color:#f59e0b;">${tot.carb}ג'</td>
+    <td style="padding:9px 4px; text-align:center; color:#ec4899;">${tot.fat}ג'</td>
+  </tr>`;
+  tbl += `</tbody></table>`;
+  document.getElementById('day-detail-table').innerHTML = tbl;
+
+  // Macros bars
+  const target = day.target || profile?.targetCalories || 2000;
+  const tProt = Math.round((target*0.25)/4);
+  const tCarb = Math.round((target*0.45)/4);
+  const tFat  = Math.round((target*0.30)/9);
+  document.getElementById('day-prot').textContent = tot.prot+'ג\'';
+  document.getElementById('day-carb').textContent = tot.carb+'ג\'';
+  document.getElementById('day-fat').textContent  = tot.fat+'ג\'';
+  document.getElementById('day-prot-bar').style.width = Math.min(tot.prot/tProt*100,100)+'%';
+  document.getElementById('day-carb-bar').style.width = Math.min(tot.carb/tCarb*100,100)+'%';
+  document.getElementById('day-fat-bar').style.width  = Math.min(tot.fat/tFat*100,100)+'%';
+
+  // Balance
+  const diff = tot.cal - target;
+  const isOver = diff > 0;
+  const pct = Math.round(tot.cal/target*100);
+  const box = document.getElementById('day-balance-box');
+  if (isOver) {
+    box.style.background = 'var(--danger-light)';
+    box.style.border = '1.5px solid #fecaca';
+    document.getElementById('day-balance-label').textContent = '⚠️ חרגת מהיעד (יתרה חיובית)';
+    document.getElementById('day-balance-label').style.color = 'var(--danger)';
+    document.getElementById('day-balance-diff').style.color = 'var(--danger)';
+    document.getElementById('day-balance-diff').textContent = '+'+n(diff)+' קל\'';
+  } else {
+    box.style.background = 'var(--accent-light)';
+    box.style.border = '1.5px solid var(--accent-dim)';
+    document.getElementById('day-balance-label').textContent = '✓ מתחת ליעד (יתרה שלילית)';
+    document.getElementById('day-balance-label').style.color = 'var(--accent)';
+    document.getElementById('day-balance-diff').style.color = 'var(--accent)';
+    document.getElementById('day-balance-diff').textContent = n(diff)+' קל\'';
+  }
+  document.getElementById('day-balance-consumed').textContent = n(tot.cal);
+  document.getElementById('day-balance-target').textContent = n(target);
+  document.getElementById('day-balance-pct').textContent = pct+'%';
+
+  openModal('day-detail');
+}
+
+function openExportMenu() { openModal('export'); }
+
+function exportXLSX(scope) {
+  // scope: 'all' | 'week' | 'day'
+  let data = getAllDays();
+
+  if (scope === 'week') {
+    const days = getWeekDays(currentWeekStart);
+    data = data.filter(d => days.includes(d.date));
+  } else if (scope === 'day') {
+    data = data.filter(d => d.date === _currentDayExport);
+  }
+
+  data.sort((a,b) => a.date.localeCompare(b.date));
+
+  if (!data.length) { alert('אין נתונים לייצא'); return; }
+
+  // Sheet 1: Daily summary
+  const summaryRows = [
+    ['תאריך', 'יום בשבוע', "סה\"כ קלוריות", 'יעד יומי', "יתרה (חיובי = חריגה)", '% מהיעד', "חלבון (ג')", "פחמימות (ג')", "שומן (ג')", 'מספר מאכלים']
+  ];
+  data.forEach(d => {
+    const items = d.entries || [];
+    const tot = items.reduce((a, e) => ({
+      cal: a.cal + (e.calories||0),
+      prot: a.prot + (e.prot||0),
+      carb: a.carb + (e.carb||0),
+      fat: a.fat + (e.fat||0)
+    }), {cal:0, prot:0, carb:0, fat:0});
+    const diff = tot.cal - d.target;
+    const pct = d.target ? Math.round(tot.cal/d.target*100) : 0;
+    summaryRows.push([
+      d.date,
+      shortDay(d.date),
+      tot.cal,
+      d.target,
+      diff,
+      pct/100,
+      tot.prot,
+      tot.carb,
+      tot.fat,
+      items.length
+    ]);
+  });
+
+  // Add weekly totals row at bottom (only for week/all scope)
+  if (scope === 'week' || scope === 'all') {
+    const grandTotal = data.reduce((acc, d) => {
+      const items = d.entries || [];
+      items.forEach(e => {
+        acc.cal += e.calories||0;
+        acc.prot += e.prot||0;
+        acc.carb += e.carb||0;
+        acc.fat += e.fat||0;
+        acc.count++;
+      });
+      acc.target += d.target || 0;
+      return acc;
+    }, {cal:0, prot:0, carb:0, fat:0, count:0, target:0});
+    summaryRows.push([]);
+    summaryRows.push([
+      scope === 'week' ? 'סה"כ שבועי' : 'סה"כ כולל',
+      '',
+      grandTotal.cal,
+      grandTotal.target,
+      grandTotal.cal - grandTotal.target,
+      grandTotal.target ? (grandTotal.cal/grandTotal.target) : 0,
+      grandTotal.prot,
+      grandTotal.carb,
+      grandTotal.fat,
+      grandTotal.count
+    ]);
+  }
+
+  // Sheet 2: All foods detail
+  const foodRows = [
+    ['תאריך', 'יום', 'שעה', 'מאכל', "משקל (ג')", 'קלוריות', "חלבון (ג')", "פחמימות (ג')", "שומן (ג')"]
+  ];
+  data.forEach(d => {
+    (d.entries || []).forEach(e => {
+      foodRows.push([
+        d.date,
+        shortDay(d.date),
+        e.time || '-',
+        e.name,
+        e.grams || 0,
+        e.calories || 0,
+        e.prot || 0,
+        e.carb || 0,
+        e.fat || 0
+      ]);
+    });
+  });
+
+  // Build workbook
+  const wb = XLSX.utils.book_new();
+
+  const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+  ws1['!cols'] = [{wch:12},{wch:8},{wch:14},{wch:10},{wch:18},{wch:10},{wch:11},{wch:14},{wch:11},{wch:13}];
+  ws1['!dir'] = 'rtl';
+  // Format % column (F)
+  for (let r = 2; r <= summaryRows.length; r++) {
+    const cell = ws1[`F${r}`];
+    if (cell && typeof cell.v === 'number') cell.z = '0%';
+  }
+  XLSX.utils.book_append_sheet(wb, ws1, 'סיכום יומי');
+
+  const ws2 = XLSX.utils.aoa_to_sheet(foodRows);
+  ws2['!cols'] = [{wch:12},{wch:8},{wch:8},{wch:32},{wch:11},{wch:11},{wch:11},{wch:14},{wch:11}];
+  ws2['!dir'] = 'rtl';
+  XLSX.utils.book_append_sheet(wb, ws2, 'פירוט מאכלים');
+
+  // Filename
+  let fname = 'מעקב-קלוריות';
+  if (scope === 'week') {
+    const endDate = new Date(currentWeekStart);
+    endDate.setDate(endDate.getDate()+6);
+    fname += `-שבוע-${currentWeekStart.toISOString().split('T')[0]}`;
+  } else if (scope === 'day') {
+    fname += '-' + _currentDayExport;
+  } else {
+    fname += '-הכל-' + todayStr();
+  }
+  fname += '.xlsx';
+
+  XLSX.writeFile(wb, fname);
+
+  // Close export modal if open
+  if (scope !== 'day') closeModal();
 }
 
 // ══════════════════════════════════════════
@@ -1832,10 +2414,19 @@ function saveFirebaseConfig() {
 // ══════════════════════════════════════════
 const AI_SYSTEM = `אתה עוזר תזונה חכם. ענה תמיד בעברית, בקצרה ובמדויק.
 
-כשמחשבים קלוריות:
+כשמחשבים קלוריות (טקסט):
 **[שם]** ([משקל]ג׳) — 🔥 [קל׳] קל׳ | 💪 [חלבון]ג׳ | 🌾 [פחמימות]ג׳ | 🥑 [שומן]ג׳
 
-אחרי חישוב קלוריות — שאל: "האם להוסיף לרשימה?"
+כשמקבלים תמונה של מאכל:
+1. זהה את המאכל המופיע בתמונה. אם יש תווית תזונתית/אריזה — קרא ממנה את הערכים המדויקים.
+2. הערך משקל בגרמים לפי גודל מנה/אריזה. אם רואים אריזה עם משקל מוצהר — השתמש בו.
+3. ענה בפורמט:
+🔍 **זיהיתי: [שם המאכל]**
+**[שם]** ([משקל]ג׳) — 🔥 [קל׳] קל׳ | 💪 [חלבון]ג׳ | 🌾 [פחמ']ג׳ | 🥑 [שומן]ג׳
+אם יש כמה פריטים בתמונה — פרט כל אחד בנפרד וסכם בסוף.
+אם לא ברור מה זה — בקש פרטים נוספים.
+
+אחרי חישוב קלוריות (טקסט או תמונה) — שאל: "האם להוסיף לרשימה?"
 
 אם המשתמש אומר "כן" / "הוסף" / "בבקשה" — ענה בדיוק בפורמט:
 \`\`\`ADD_FOOD
@@ -1845,6 +2436,7 @@ const AI_SYSTEM = `אתה עוזר תזונה חכם. ענה תמיד בעברי
 let aiMessages = [];
 let aiLoading = false;
 let aiInited = false;
+let pendingImage = null; // {base64, mediaType, previewUrl}
 
 function initAiChat() {
   if (aiInited) return;
@@ -1855,25 +2447,42 @@ function initAiChat() {
   w.className = 'msg ai';
   w.innerHTML = `<div class="msg-avatar">🤖</div>
     <div class="msg-bubble">שלום <strong>${profile?.name||'אביחי'}</strong>! 👋<br><br>
-    שאל אותי על קלוריות בכל מאכל — אני יודע הכל 😄<br><br>
+    שאל אותי על קלוריות בכל מאכל — אני יודע הכל 😄<br>
+    📷 או <strong>צרף תמונה של מאכל/אריזה</strong> ואני אזהה ואחשב את הערכים.<br><br>
     אוכל גם <strong>להוסיף ישירות לרשימה</strong> אחרי שמחשבים.</div>`;
   c.appendChild(w);
 }
 
-function clearAiChat() { aiInited = false; aiMessages = []; initAiChat(); }
+function clearAiChat() {
+  removePendingImage();
+  aiInited = false;
+  aiMessages = [];
+  initAiChat();
+}
 
 async function sendAiMessage() {
   const inp = document.getElementById('ai-input');
   const text = inp.value.trim();
-  if (!text || aiLoading) return;
+  if ((!text && !pendingImage) || aiLoading) return;
+  const imgData = pendingImage;
   inp.value = ''; autoResizeAi(inp);
-  await processAi(text);
+  // Default text if only image was sent
+  const finalText = text || (imgData ? 'זהה את המאכל בתמונה והצג ערכים תזונתיים.' : '');
+  // Clear pending preview before sending
+  pendingImage = null;
+  showPendingImagePreview();
+  await processAi(finalText, imgData);
 }
 
-async function processAi(text) {
+async function processAi(text, imgData) {
   if (aiLoading) return;
-  appendAiMsg('user', text);
-  aiMessages.push({role:'user', content:text});
+  // Add user message to UI
+  if (imgData) appendUserMsgWithImage(text, imgData);
+  else appendAiMsg('user', text);
+
+  // Add to history (with image if present)
+  aiMessages.push(buildUserMessage(text, imgData));
+
   aiLoading = true;
   document.getElementById('ai-send-btn').disabled = true;
   const typing = appendAiTyping();
@@ -1881,13 +2490,24 @@ async function processAi(text) {
     const consumed = entries.reduce((s,e)=>s+e.calories, 0);
     const target = profile?.targetCalories || 1650;
     const ctx = `[נותרו לי ${target-consumed} קל׳ מתוך יעד ${target}]`;
+    // Inject context into first message (handle both string and array content)
+    const firstMsg = aiMessages[0];
+    let firstContent;
+    if (typeof firstMsg.content === 'string') {
+      firstContent = ctx+'\n\n'+firstMsg.content;
+    } else {
+      firstContent = firstMsg.content.map(c => {
+        if (c.type === 'text') return {...c, text: ctx+'\n\n'+c.text};
+        return c;
+      });
+    }
     const msgs = [
-      {role:'user', content: ctx+'\n\n'+aiMessages[0].content},
+      {role: firstMsg.role, content: firstContent},
       ...aiMessages.slice(1)
     ];
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST', headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({model:'claude-sonnet-4-6', max_tokens:600, system:AI_SYSTEM, messages:msgs})
+      body: JSON.stringify({model:'claude-sonnet-4-6', max_tokens:700, system:AI_SYSTEM, messages:msgs})
     });
     const d = await r.json();
     if (d.error) throw new Error(d.error.message || JSON.stringify(d.error));
@@ -1904,10 +2524,124 @@ async function processAi(text) {
       } catch { appendAiMsg('ai', reply); }
     } else { appendAiMsg('ai', reply); }
     aiMessages.push({role:'assistant', content:reply});
+
+    // After AI responds, replace image in history with text-only summary to save tokens on next turns
+    if (imgData) {
+      const userIdx = aiMessages.length - 2;
+      const orig = aiMessages[userIdx];
+      if (Array.isArray(orig.content)) {
+        const txtPart = orig.content.find(c => c.type === 'text');
+        aiMessages[userIdx] = { role:'user', content: '[שלחתי תמונה של מאכל] ' + (txtPart?.text||'') };
+      }
+    }
   } catch(err) { typing.remove(); appendAiMsg('ai', '⚠️ שגיאה: ' + (err?.message || JSON.stringify(err))); }
   aiLoading = false;
   document.getElementById('ai-send-btn').disabled = false;
   aiScrollBottom();
+}
+
+function buildUserMessage(text, imgData) {
+  if (imgData) {
+    return {
+      role: 'user',
+      content: [
+        {type:'image', source:{type:'base64', media_type:imgData.mediaType, data:imgData.base64}},
+        {type:'text', text: text}
+      ]
+    };
+  }
+  return {role:'user', content:text};
+}
+
+// ── Image attach handling ──
+function handleAiImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  attachImageToChat(file);
+}
+
+async function attachImageToChat(file) {
+  if (!file) return;
+  try {
+    // Resize to max 1280px to save tokens & bandwidth
+    const {blob, mediaType} = await resizeImage(file, 1280, 0.85);
+    const base64 = await new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>res(r.result.split(',')[1]);
+      r.onerror=()=>rej(new Error('Read failed'));
+      r.readAsDataURL(blob);
+    });
+    if (pendingImage && pendingImage.previewUrl) URL.revokeObjectURL(pendingImage.previewUrl);
+    const previewUrl = URL.createObjectURL(blob);
+    pendingImage = {base64, mediaType, previewUrl};
+    showPendingImagePreview();
+  } catch(e) {
+    alert('⚠️ שגיאה בקליטת התמונה: ' + e.message);
+  }
+}
+
+async function resizeImage(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > maxDim || h > maxDim) {
+        if (w >= h) { h = Math.round(h * maxDim/w); w = maxDim; }
+        else { w = Math.round(w * maxDim/h); h = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => {
+        if (!blob) { reject(new Error('Resize failed')); return; }
+        resolve({blob, mediaType: 'image/jpeg'});
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('טעינת תמונה נכשלה')); };
+    img.src = url;
+  });
+}
+
+function showPendingImagePreview() {
+  const preview = document.getElementById('ai-pending-image');
+  const attachBtn = document.getElementById('ai-attach-btn');
+  if (pendingImage) {
+    preview.innerHTML = `<div style="display:flex; align-items:center; gap:10px; padding:8px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; margin:0 14px 6px;">
+      <img src="${pendingImage.previewUrl}" style="width:46px; height:46px; object-fit:cover; border-radius:9px; border:1px solid #fff;">
+      <div style="flex:1; font-size:12px; font-weight:700; color:#4f46e5;">📷 תמונה מוכנה לשליחה<br><span style="font-weight:400; color:var(--muted); font-size:11px;">לחץ ➤ כדי לשלוח</span></div>
+      <button onclick="removePendingImage()" style="background:#fff; border:1px solid #c7d2fe; border-radius:8px; width:28px; height:28px; cursor:pointer; color:var(--danger); font-size:13px; font-family:inherit;">✕</button>
+    </div>`;
+    preview.style.display = 'block';
+    if (attachBtn) attachBtn.classList.add('has-image');
+  } else {
+    preview.style.display = 'none';
+    preview.innerHTML = '';
+    if (attachBtn) attachBtn.classList.remove('has-image');
+  }
+}
+
+function removePendingImage() {
+  if (pendingImage && pendingImage.previewUrl) URL.revokeObjectURL(pendingImage.previewUrl);
+  pendingImage = null;
+  showPendingImagePreview();
+}
+
+function appendUserMsgWithImage(text, imgData) {
+  const c = document.getElementById('ai-messages');
+  const d = document.createElement('div');
+  d.className = 'msg user';
+  d.innerHTML = `<div class="msg-avatar">🙂</div>
+    <div style="display:flex; flex-direction:column; align-items:flex-end; max-width:78%; gap:5px;">
+      <img src="${imgData.previewUrl}" style="max-width:200px; max-height:240px; border-radius:14px; border:2px solid var(--border); object-fit:cover; display:block;">
+      ${text ? `<div class="msg-bubble" style="text-align:right;">${text.replace(/\n/g,'<br>')}</div>` : ''}
+    </div>`;
+  c.appendChild(d);
+  aiScrollBottom();
+  return d;
 }
 
 function appendAiMsg(role, text) {
