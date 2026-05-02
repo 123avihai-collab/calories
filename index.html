@@ -414,11 +414,18 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
     <!-- Header with week picker -->
     <div style="padding:20px 20px 0; margin-bottom:14px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-        <h2 style="font-size:18px; font-weight:700;">היסטוריה שבועית 📅</h2>
+        <h2 style="font-size:18px; font-weight:700;">היסטוריה 📅</h2>
         <button class="btn btn-sm btn-blue" onclick="openExportMenu()" style="padding:7px 14px;">📥 ייצא</button>
       </div>
-      <!-- Week navigator -->
-      <div style="display:flex; align-items:center; justify-content:space-between; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:8px 12px; box-shadow:0 2px 8px rgba(30,60,120,0.06);">
+
+      <!-- View switcher: weekly vs custom range -->
+      <div style="display:flex; gap:6px; background:var(--card2); padding:4px; border-radius:12px; margin-bottom:12px;">
+        <button id="hist-view-week" onclick="setHistoryView('week')" style="flex:1; padding:9px 4px; border:none; border-radius:9px; background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; font-weight:800; font-size:12px; cursor:pointer; font-family:inherit; box-shadow:0 2px 8px rgba(37,99,235,0.25);">📅 שבועי</button>
+        <button id="hist-view-range" onclick="setHistoryView('range')" style="flex:1; padding:9px 4px; border:none; border-radius:9px; background:transparent; color:var(--muted); font-weight:700; font-size:12px; cursor:pointer; font-family:inherit;">📊 תקופה מותאמת</button>
+      </div>
+
+      <!-- Week navigator (visible only in 'week' view) -->
+      <div id="hist-week-nav" style="display:flex; align-items:center; justify-content:space-between; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:8px 12px; box-shadow:0 2px 8px rgba(30,60,120,0.06);">
         <button onclick="changeWeek(1)" style="background:var(--card2); border:1px solid var(--border); border-radius:10px; width:38px; height:38px; cursor:pointer; font-size:18px; font-weight:700; color:var(--text);">▶</button>
         <div style="text-align:center;">
           <div style="font-size:15px; font-weight:800;" id="hist-week-label">-</div>
@@ -426,9 +433,34 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
         </div>
         <button onclick="changeWeek(-1)" style="background:var(--card2); border:1px solid var(--border); border-radius:10px; width:38px; height:38px; cursor:pointer; font-size:18px; font-weight:700; color:var(--text);">◀</button>
       </div>
+
+      <!-- Range picker (visible only in 'range' view) -->
+      <div id="hist-range-picker" style="display:none; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; box-shadow:0 2px 8px rgba(30,60,120,0.06);">
+        <div style="font-size:12px; color:var(--muted); font-weight:700; margin-bottom:10px;">📅 בחר תקופה לחישוב</div>
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+          <div style="flex:1;">
+            <label class="lbl" style="font-size:11px; margin-bottom:4px;">מתאריך</label>
+            <input type="date" class="input" id="range-start" onchange="renderRange()" style="font-size:13px; padding:8px;">
+          </div>
+          <div style="flex:1;">
+            <label class="lbl" style="font-size:11px; margin-bottom:4px;">עד תאריך</label>
+            <input type="date" class="input" id="range-end" onchange="renderRange()" style="font-size:13px; padding:8px;">
+          </div>
+        </div>
+        <!-- Quick presets -->
+        <div style="display:flex; gap:5px; flex-wrap:wrap;">
+          <button class="chip" onclick="setRangePreset('thisWeek')" style="font-size:11px;">השבוע</button>
+          <button class="chip" onclick="setRangePreset('lastWeek')" style="font-size:11px;">שבוע שעבר</button>
+          <button class="chip" onclick="setRangePreset('last7')" style="font-size:11px;">7 ימים אחרונים</button>
+          <button class="chip" onclick="setRangePreset('last14')" style="font-size:11px;">14 ימים אחרונים</button>
+          <button class="chip" onclick="setRangePreset('thisMonth')" style="font-size:11px;">החודש</button>
+          <button class="chip" onclick="setRangePreset('last30')" style="font-size:11px;">30 ימים אחרונים</button>
+        </div>
+      </div>
     </div>
 
-    <div style="padding:0 20px;">
+    <!-- WEEK VIEW CONTENT -->
+    <div id="hist-week-content" style="padding:0 20px;">
       <!-- Weekly totals (4 cards) -->
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:6px; margin-bottom:12px;">
         <div class="card-sm" style="text-align:center; padding:10px 4px;">
@@ -492,6 +524,73 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       <div id="hist-empty" style="text-align:center; padding:24px; color:var(--muted); display:none;">
         <div style="font-size:36px; margin-bottom:8px;">📅</div>
         <div style="font-size:13px;">אין נתונים בשבוע זה</div>
+      </div>
+    </div>
+
+    <!-- RANGE VIEW CONTENT -->
+    <div id="hist-range-content" style="display:none; padding:0 20px;">
+      <!-- Recommended daily average for remaining days (HERO CARD) -->
+      <div id="range-hero" class="card" style="margin-bottom:12px; padding:16px; background:linear-gradient(135deg,#dbeafe,#dcfce7); border-color:#bfdbfe; display:none;">
+        <div style="font-size:11px; color:var(--muted); font-weight:700; margin-bottom:6px; text-align:center;" id="range-hero-label">💡 ממוצע מומלץ ליום הנותר</div>
+        <div style="text-align:center; margin-bottom:12px;">
+          <span style="font-size:34px; font-weight:800;" id="range-hero-value">—</span>
+          <span style="font-size:14px; color:var(--muted); font-weight:600;"> קל'/יום</span>
+        </div>
+        <div id="range-hero-detail" style="font-size:11px; color:var(--muted); text-align:center; line-height:1.6; padding:8px 10px; background:rgba(255,255,255,0.7); border-radius:10px;"></div>
+      </div>
+
+      <!-- 4 stat cards: total / target / consumed / remaining days -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:12px;">
+        <div class="card-sm" style="text-align:center; padding:10px 6px;">
+          <div style="font-size:18px; font-weight:800; color:var(--accent);" id="range-consumed">0</div>
+          <div style="font-size:10px; color:var(--muted); margin-top:2px; font-weight:600;">סה"כ נצרכו (קל')</div>
+        </div>
+        <div class="card-sm" style="text-align:center; padding:10px 6px;">
+          <div style="font-size:18px; font-weight:800; color:var(--blue);" id="range-target">0</div>
+          <div style="font-size:10px; color:var(--muted); margin-top:2px; font-weight:600;">יעד תקופה (קל')</div>
+        </div>
+        <div class="card-sm" style="text-align:center; padding:10px 6px;">
+          <div style="font-size:18px; font-weight:800; color:var(--purple);" id="range-avg">0</div>
+          <div style="font-size:10px; color:var(--muted); margin-top:2px; font-weight:600;">ממוצע יומי שצרכת</div>
+        </div>
+        <div class="card-sm" style="text-align:center; padding:10px 6px;">
+          <div style="font-size:18px; font-weight:800; color:var(--teal);" id="range-tracked">0/0</div>
+          <div style="font-size:10px; color:var(--muted); margin-top:2px; font-weight:600;">ימים מתועדים</div>
+        </div>
+      </div>
+
+      <!-- Macros totals -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:12px;">
+        <div class="card-sm" style="text-align:center; padding:10px 4px;">
+          <div style="font-size:14px; font-weight:800; color:#3b82f6;" id="range-prot">0ג'</div>
+          <div style="font-size:9px; color:#3b82f6; margin-top:2px; font-weight:600;">💪 חלבון</div>
+        </div>
+        <div class="card-sm" style="text-align:center; padding:10px 4px;">
+          <div style="font-size:14px; font-weight:800; color:#f59e0b;" id="range-carb">0ג'</div>
+          <div style="font-size:9px; color:#f59e0b; margin-top:2px; font-weight:600;">🌾 פחמ'</div>
+        </div>
+        <div class="card-sm" style="text-align:center; padding:10px 4px;">
+          <div style="font-size:14px; font-weight:800; color:#ec4899;" id="range-fat">0ג'</div>
+          <div style="font-size:9px; color:#ec4899; margin-top:2px; font-weight:600;">🥑 שומן</div>
+        </div>
+      </div>
+
+      <!-- Balance summary -->
+      <div id="range-balance-box" class="card-sm" style="padding:12px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-size:12px; font-weight:700;" id="range-balance-label">יתרה</div>
+          <div style="font-size:22px; font-weight:800;" id="range-balance-diff">0</div>
+        </div>
+      </div>
+
+      <!-- Days list in range -->
+      <div style="font-size:11px; color:var(--muted); margin-bottom:8px; text-align:center;">לחץ על יום לראות פירוט מלא</div>
+      <div id="range-days-list"></div>
+
+      <!-- Empty state -->
+      <div id="range-empty" style="text-align:center; padding:24px; color:var(--muted); display:none;">
+        <div style="font-size:36px; margin-bottom:8px;">📊</div>
+        <div style="font-size:13px;" id="range-empty-msg">בחר תקופה כדי לראות סיכום</div>
       </div>
     </div>
   </div>
@@ -702,6 +801,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
     <div class="tabs">
       <button class="tab" id="tab-pantry" onclick="setTab('pantry')">⭐ מחסן</button>
       <button class="tab" id="tab-text"   onclick="setTab('text')">🔍 חיפוש</button>
+      <button class="tab" id="tab-ai"     onclick="setTab('ai')">🤖 AI</button>
       <button class="tab" id="tab-image"  onclick="setTab('image')">📷 תמונה</button>
       <button class="tab" id="tab-barcode" onclick="setTab('barcode')">🔲 ברקוד</button>
     </div>
@@ -742,6 +842,45 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
           </div>
         </div>
         <button class="btn btn-w" style="margin-top:12px;" onclick="confirmAddFood()">הוסף לרשימה</button>
+      </div>
+    </div>
+
+    <!-- AI CHAT TAB (inside add modal) -->
+    <div id="tab-content-ai" style="display:none;">
+      <div id="modal-ai-target" style="background:linear-gradient(135deg,#ede9fe,#dbeafe); border:1px solid #ddd6fe; border-radius:12px; padding:10px 12px; margin-bottom:10px; font-size:12px; color:var(--text); display:flex; align-items:center; gap:8px;">
+        <span style="font-size:16px;">🤖</span>
+        <div style="flex:1;">
+          <div style="font-weight:700;" id="modal-ai-target-title">מוסיף ל: היום</div>
+          <div style="font-size:11px; color:var(--muted); margin-top:1px;">תאר מה אכלת — ה-AI יזהה ויוסיף הכל ביחד</div>
+        </div>
+      </div>
+
+      <!-- Pending image preview -->
+      <div id="modal-ai-img-preview" style="display:none; margin-bottom:10px; padding:8px; background:var(--card2); border-radius:10px; border:1px solid var(--border); position:relative;">
+        <img id="modal-ai-img-thumb" style="width:100%; max-height:120px; object-fit:cover; border-radius:8px; display:block;">
+        <button onclick="removeModalAiImage()" style="position:absolute; top:12px; left:12px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:26px; height:26px; cursor:pointer; font-size:14px;">✕</button>
+      </div>
+
+      <!-- Messages area -->
+      <div id="modal-ai-messages" style="background:var(--card2); border:1px solid var(--border); border-radius:12px; padding:12px; height:280px; overflow-y:auto; margin-bottom:10px; font-size:13px; line-height:1.6;"></div>
+
+      <!-- Quick prompts -->
+      <div id="modal-ai-quick" style="display:flex; gap:5px; flex-wrap:wrap; margin-bottom:10px;">
+        <button class="chip" onclick="modalAiQuickPrompt('כריך עם גבינה צהובה ועגבנייה')" style="font-size:11px;">🥪 כריך</button>
+        <button class="chip" onclick="modalAiQuickPrompt('סלט ירקות עם טונה וביצה')" style="font-size:11px;">🥗 סלט</button>
+        <button class="chip" onclick="modalAiQuickPrompt('חזה עוף בגריל 200 גרם עם אורז')" style="font-size:11px;">🍗 ארוחה</button>
+        <button class="chip" onclick="modalAiQuickPrompt('כוס קפה עם חלב וסוכר')" style="font-size:11px;">☕ קפה</button>
+      </div>
+
+      <!-- Input bar -->
+      <div style="display:flex; gap:6px; align-items:flex-end;">
+        <input type="file" id="modal-ai-img-input" accept="image/*" style="display:none" onchange="handleModalAiImage(this)">
+        <button onclick="document.getElementById('modal-ai-img-input').click()" title="צרף תמונה" style="background:var(--card2); border:1px solid var(--border); border-radius:12px; width:42px; height:42px; cursor:pointer; font-size:18px; flex-shrink:0;">📎</button>
+        <textarea id="modal-ai-input" placeholder="לדוגמה: אכלתי 2 ביצים, פרוסת לחם, כוס מיץ..." rows="1" style="flex:1; border:1.5px solid var(--border); border-radius:12px; padding:10px 12px; font-size:14px; font-family:inherit; resize:none; min-height:42px; max-height:100px;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendModalAi();}"></textarea>
+        <button id="modal-ai-send" onclick="sendModalAi()" style="background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; border:none; border-radius:12px; width:42px; height:42px; cursor:pointer; font-size:18px; flex-shrink:0; box-shadow:0 4px 12px rgba(124,58,237,0.3);">➤</button>
+      </div>
+      <div style="margin-top:8px; text-align:center;">
+        <button onclick="clearModalAi()" style="background:transparent; border:none; color:var(--muted); font-size:11px; cursor:pointer; font-family:inherit;">🗑️ נקה צ'אט</button>
       </div>
     </div>
 
@@ -958,7 +1097,9 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       </div>
 
       <!-- Export day button -->
-      <button class="btn btn-w btn-blue" onclick="exportXLSX('day')">📥 ייצא יום זה לאקסל</button>
+      <button class="btn btn-w btn-blue" style="margin-bottom:8px;" onclick="exportXLSX('day')">📥 ייצא יום זה לאקסל</button>
+      <!-- Delete entire day button -->
+      <button class="btn btn-w btn-red" onclick="deleteEntireDay()" style="font-size:13px;">🗑️ מחק את כל היום</button>
     </div>
   </div>
 </div>
@@ -1355,7 +1496,10 @@ function showScreen(name) {
     if (btn) btn.classList.toggle('active', n===name);
   });
   if (name==='dashboard') renderDashboard();
-  if (name==='history')   renderHistory();
+  if (name==='history')   {
+    if (_historyView === 'range') renderRange();
+    else renderHistory();
+  }
   if (name==='settings')  renderSettings();
   if (name==='weight')    renderWeight();
   if (name==='ai')        { initAiChat(); setTimeout(()=>document.getElementById('ai-input').focus(),200); }
@@ -1689,6 +1833,25 @@ function openModal(which) {
     } else {
       titleEl.textContent = 'הוסף מאכל';
     }
+    // Update modal AI chat target label
+    const aiTargetEl = document.getElementById('modal-ai-target-title');
+    if (aiTargetEl) {
+      if (_addToDate && _addToDate !== today) {
+        const isFuture = _addToDate > today;
+        const icon = isFuture ? '🔮' : '📅';
+        aiTargetEl.innerHTML = `מוסיף ל: ${icon} <strong>${heDay(_addToDate)}</strong>`;
+      } else {
+        aiTargetEl.innerHTML = `מוסיף ל: <strong>היום</strong>`;
+      }
+    }
+    // Clear modal AI chat if target day changed
+    const newTarget = _addToDate || today;
+    if (_lastModalAiTarget && _lastModalAiTarget !== newTarget) {
+      modalAiMessages = [];
+      modalAiInited = false;
+      removeModalAiImage();
+    }
+    _lastModalAiTarget = newTarget;
     resetImg(); resetBarcode();
     document.getElementById('search-input').value='';
     document.getElementById('search-results').innerHTML='';
@@ -1705,15 +1868,16 @@ function closeModal() {
 // ══════════════════════════════════════════
 // TABS
 // ══════════════════════════════════════════
-const tabColors = { pantry:'gold', text:'blue', image:'teal', barcode:'purple' };
+const tabColors = { pantry:'gold', text:'blue', ai:'purple', image:'teal', barcode:'purple' };
 function setTab(name) {
-  ['pantry','text','image','barcode'].forEach(t=>{
+  ['pantry','text','ai','image','barcode'].forEach(t=>{
     document.getElementById('tab-content-'+t).style.display = t===name?'':'none';
     const btn = document.getElementById('tab-'+t);
     btn.className = 'tab';
     if (t===name) btn.classList.add('active-'+tabColors[t]);
   });
   if (name==='pantry') renderPantryTab();
+  if (name==='ai') initModalAi();
   if (name==='text') setTimeout(()=>document.getElementById('search-input').focus(),100);
 }
 
@@ -1998,6 +2162,367 @@ function changeWeek(delta) {
 function goToCurrentWeek() {
   currentWeekStart = getWeekStart(new Date());
   renderHistory();
+}
+
+// ══════════════════════════════════════════
+// 📊 HISTORY VIEW SWITCHER (week / custom range)
+// ══════════════════════════════════════════
+let _historyView = 'week'; // 'week' | 'range'
+
+function setHistoryView(view) {
+  _historyView = view;
+  const wkBtn = document.getElementById('hist-view-week');
+  const rgBtn = document.getElementById('hist-view-range');
+  const wkNav = document.getElementById('hist-week-nav');
+  const rgPick = document.getElementById('hist-range-picker');
+  const wkContent = document.getElementById('hist-week-content');
+  const rgContent = document.getElementById('hist-range-content');
+
+  if (view === 'week') {
+    wkBtn.style.background = 'linear-gradient(135deg,#2563eb,#1d4ed8)';
+    wkBtn.style.color = '#fff';
+    wkBtn.style.boxShadow = '0 2px 8px rgba(37,99,235,0.25)';
+    rgBtn.style.background = 'transparent';
+    rgBtn.style.color = 'var(--muted)';
+    rgBtn.style.boxShadow = 'none';
+    wkNav.style.display = 'flex';
+    rgPick.style.display = 'none';
+    wkContent.style.display = 'block';
+    rgContent.style.display = 'none';
+    renderHistory();
+  } else {
+    rgBtn.style.background = 'linear-gradient(135deg,#7c3aed,#6d28d9)';
+    rgBtn.style.color = '#fff';
+    rgBtn.style.boxShadow = '0 2px 8px rgba(124,58,237,0.25)';
+    wkBtn.style.background = 'transparent';
+    wkBtn.style.color = 'var(--muted)';
+    wkBtn.style.boxShadow = 'none';
+    wkNav.style.display = 'none';
+    rgPick.style.display = 'block';
+    wkContent.style.display = 'none';
+    rgContent.style.display = 'block';
+    // Default range: last 7 days, if not yet set
+    const startEl = document.getElementById('range-start');
+    const endEl = document.getElementById('range-end');
+    if (!startEl.value || !endEl.value) {
+      setRangePreset('last7');
+    } else {
+      renderRange();
+    }
+  }
+}
+
+function setRangePreset(preset) {
+  const today = new Date();
+  let start, end;
+  switch(preset) {
+    case 'thisWeek': {
+      start = getWeekStart(new Date());
+      end = new Date(start); end.setDate(end.getDate() + 6);
+      break;
+    }
+    case 'lastWeek': {
+      start = getWeekStart(new Date());
+      start.setDate(start.getDate() - 7);
+      end = new Date(start); end.setDate(end.getDate() + 6);
+      break;
+    }
+    case 'last7': {
+      end = new Date(today);
+      start = new Date(today); start.setDate(start.getDate() - 6);
+      break;
+    }
+    case 'last14': {
+      end = new Date(today);
+      start = new Date(today); start.setDate(start.getDate() - 13);
+      break;
+    }
+    case 'thisMonth': {
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      end = new Date(today.getFullYear(), today.getMonth()+1, 0);
+      break;
+    }
+    case 'last30': {
+      end = new Date(today);
+      start = new Date(today); start.setDate(start.getDate() - 29);
+      break;
+    }
+  }
+  document.getElementById('range-start').value = dateToISO(start);
+  document.getElementById('range-end').value = dateToISO(end);
+  renderRange();
+}
+
+function dateToISO(d) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function renderRange() {
+  const startVal = document.getElementById('range-start').value;
+  const endVal = document.getElementById('range-end').value;
+  const empty = document.getElementById('range-empty');
+  const hero = document.getElementById('range-hero');
+  const list = document.getElementById('range-days-list');
+  const balance = document.getElementById('range-balance-box');
+
+  if (!startVal || !endVal) {
+    empty.style.display = 'block';
+    empty.querySelector('#range-empty-msg').textContent = 'בחר תקופה כדי לראות סיכום';
+    hero.style.display = 'none';
+    list.innerHTML = '';
+    balance.style.display = 'none';
+    return;
+  }
+
+  if (startVal > endVal) {
+    empty.style.display = 'block';
+    empty.querySelector('#range-empty-msg').textContent = '⚠️ תאריך התחלה חייב להיות לפני תאריך סיום';
+    hero.style.display = 'none';
+    list.innerHTML = '';
+    balance.style.display = 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+
+  // Build list of dates in range
+  const dates = [];
+  const d = new Date(startVal + 'T12:00:00');
+  const endD = new Date(endVal + 'T12:00:00');
+  while (d <= endD) {
+    dates.push(dateToISO(d));
+    d.setDate(d.getDate() + 1);
+  }
+
+  const allDays = getAllDays();
+  const targetDaily = profile?.targetCalories || 2000;
+  const totalDays = dates.length;
+  const today = todayStr();
+
+  // Aggregate consumed (only past + today)
+  let consumed = 0, prot = 0, carb = 0, fat = 0;
+  let trackedCount = 0;
+  let pastOrTodayCount = 0; // days that have already passed or are today
+  let futureCount = 0;
+  const dayObjs = [];
+
+  dates.forEach(date => {
+    const day = allDays.find(x => x.date === date) || {date, entries:[], target:targetDaily};
+    const m = calcDayMacros(day);
+    dayObjs.push({...day, _macros:m});
+    if (date <= today) {
+      pastOrTodayCount++;
+      consumed += m.cal;
+      prot += m.prot;
+      carb += m.carb;
+      fat += m.fat;
+      if (m.cal > 0) trackedCount++;
+    } else {
+      futureCount++;
+    }
+  });
+
+  const targetTotal = targetDaily * totalDays;
+
+  // Stat cards
+  document.getElementById('range-consumed').textContent = n(consumed);
+  document.getElementById('range-target').textContent = n(targetTotal);
+  document.getElementById('range-tracked').textContent = `${trackedCount}/${totalDays}`;
+  const avgConsumed = trackedCount ? Math.round(consumed / trackedCount) : 0;
+  document.getElementById('range-avg').textContent = n(avgConsumed);
+
+  // Macros
+  document.getElementById('range-prot').textContent = n(prot) + 'ג\'';
+  document.getElementById('range-carb').textContent = n(carb) + 'ג\'';
+  document.getElementById('range-fat').textContent = n(fat) + 'ג\'';
+
+  // Balance
+  const diff = consumed - (targetDaily * pastOrTodayCount);
+  const isOver = diff > 0;
+  balance.style.display = 'block';
+  const balLbl = document.getElementById('range-balance-label');
+  const balDiff = document.getElementById('range-balance-diff');
+  balDiff.textContent = (isOver ? '+' : '') + n(diff) + ' קל\'';
+  if (consumed === 0) {
+    balance.style.background = 'var(--card)';
+    balance.style.border = '1px solid var(--border)';
+    balLbl.textContent = 'יתרה לעומת הימים שחלפו';
+    balLbl.style.color = 'var(--muted)';
+    balDiff.style.color = 'var(--muted)';
+    balDiff.textContent = '—';
+  } else if (isOver) {
+    balance.style.background = 'var(--danger-light)';
+    balance.style.border = '1px solid #fecaca';
+    balLbl.textContent = '⚠️ חרגת מהיעד עד כה';
+    balLbl.style.color = 'var(--danger)';
+    balDiff.style.color = 'var(--danger)';
+  } else {
+    balance.style.background = 'var(--accent-light)';
+    balance.style.border = '1px solid var(--accent-dim)';
+    balLbl.textContent = '✓ מתחת ליעד עד כה';
+    balLbl.style.color = 'var(--accent)';
+    balDiff.style.color = 'var(--accent)';
+  }
+
+  // ══════════════════════════════════════════
+  // 💡 HERO: Recommended daily average for remaining days
+  // ══════════════════════════════════════════
+  hero.style.display = 'block';
+  const heroVal = document.getElementById('range-hero-value');
+  const heroDetail = document.getElementById('range-hero-detail');
+  const heroLabel = document.getElementById('range-hero-label');
+
+  // Determine remaining days INCLUDING today (still possible to eat today)
+  let remainingDays;
+  if (endVal < today) {
+    // Period already ended
+    remainingDays = 0;
+  } else if (startVal > today) {
+    // Period hasn't started yet — all days are remaining
+    remainingDays = totalDays;
+  } else {
+    // We're inside the period — remaining = today + future days
+    remainingDays = futureCount + 1;
+  }
+
+  if (remainingDays === 0) {
+    // Period ended — show final summary
+    heroLabel.textContent = '📊 סיכום סופי לתקופה';
+    const finalAvg = totalDays ? Math.round(consumed / totalDays) : 0;
+    heroVal.textContent = n(finalAvg);
+    const totalDiff = consumed - targetTotal;
+    if (totalDiff > 0) {
+      heroDetail.innerHTML = `התקופה הסתיימה.<br>חרגת ב-<strong style="color:var(--danger);">+${n(totalDiff)} קל'</strong> מעל היעד הכולל (${n(targetTotal)} קל').`;
+      hero.style.background = 'linear-gradient(135deg,#fee2e2,#fef3c7)';
+      hero.style.borderColor = '#fecaca';
+    } else {
+      heroDetail.innerHTML = `התקופה הסתיימה.<br>נשארת <strong style="color:var(--accent);">${n(Math.abs(totalDiff))} קל' מתחת</strong> ליעד הכולל (${n(targetTotal)} קל'). 🎯`;
+      hero.style.background = 'linear-gradient(135deg,#dcfce7,#dbeafe)';
+      hero.style.borderColor = '#bbf7d0';
+    }
+  } else {
+    // Active period
+    const remainingBudget = targetTotal - consumed;
+    const recommendedDaily = Math.round(remainingBudget / remainingDays);
+
+    heroLabel.textContent = '💡 ממוצע מומלץ ליום הנותר';
+
+    if (recommendedDaily <= 0) {
+      heroVal.textContent = '0';
+      heroVal.style.color = 'var(--danger)';
+      heroDetail.innerHTML = `⚠️ חרגת כבר מיעד התקופה.<br>צרכת <strong>${n(consumed)}</strong> קל' מתוך יעד של <strong>${n(targetTotal)}</strong> קל' לכל ${totalDays} הימים.<br>נותרו <strong>${remainingDays}</strong> ימים — שווה לחזור לאיזון.`;
+      hero.style.background = 'linear-gradient(135deg,#fee2e2,#fef3c7)';
+      hero.style.borderColor = '#fecaca';
+    } else {
+      heroVal.textContent = n(recommendedDaily);
+      const diffFromBaseline = recommendedDaily - targetDaily;
+      let baselineLine = '';
+      if (Math.abs(diffFromBaseline) < 5) {
+        baselineLine = `אתה בקצב טוב — הממוצע המומלץ זהה ליעד היומי (${n(targetDaily)} קל').`;
+        heroVal.style.color = 'var(--accent)';
+        hero.style.background = 'linear-gradient(135deg,#dcfce7,#dbeafe)';
+        hero.style.borderColor = '#bbf7d0';
+      } else if (diffFromBaseline < 0) {
+        baselineLine = `ירד ב-<strong style="color:var(--warning);">${n(Math.abs(diffFromBaseline))} קל'/יום</strong> מהיעד הרגיל (${n(targetDaily)} קל') כדי לאזן את התקופה.`;
+        heroVal.style.color = 'var(--warning)';
+        hero.style.background = 'linear-gradient(135deg,#fef3c7,#dbeafe)';
+        hero.style.borderColor = '#fcd34d';
+      } else {
+        baselineLine = `יש לך מרווח של <strong style="color:var(--accent);">+${n(diffFromBaseline)} קל'/יום</strong> מעל היעד הרגיל (${n(targetDaily)} קל') 🎯`;
+        heroVal.style.color = 'var(--accent)';
+        hero.style.background = 'linear-gradient(135deg,#dcfce7,#dbeafe)';
+        hero.style.borderColor = '#bbf7d0';
+      }
+      heroDetail.innerHTML = `נצרכו <strong>${n(consumed)}</strong> מתוך <strong>${n(targetTotal)}</strong> קל' (${totalDays} ימים × ${n(targetDaily)}).<br>נשארו <strong>${n(remainingBudget)} קל'</strong> ל-<strong>${remainingDays}</strong> הימים הבאים.<br>${baselineLine}`;
+    }
+  }
+
+  // Render days list
+  const dayNames = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  if (dayObjs.length === 0) {
+    list.innerHTML = '';
+  } else {
+    list.innerHTML = dayObjs.map(day => {
+      const m = day._macros;
+      const isToday = day.date === today;
+      const isFuture = day.date > today;
+      const isPast = !isToday && !isFuture;
+      const dt = new Date(day.date+'T12:00:00');
+      const dayNum = dt.getDate();
+      const monthNum = dt.getMonth() + 1;
+      const dayOfWeek = dt.getDay();
+      const dayName = dayNames[dayOfWeek];
+
+      let bg = 'var(--card)';
+      let border = '1px solid var(--border)';
+      let calColor = 'var(--dim)';
+      let badge = '';
+      const dayTarget = day.target || targetDaily;
+
+      if (isFuture && m.cal === 0) {
+        bg = '#fafbfd'; calColor = '#a78bfa'; badge = '🔮 תכנון';
+      } else if (isFuture && m.cal > 0) {
+        bg = '#f5f3ff'; border = '1px solid #ddd6fe'; calColor = '#7c3aed'; badge = '🔮 מתוכנן';
+      } else if (isPast && m.cal === 0) {
+        bg = '#fffbeb'; border = '1px dashed #fde68a'; calColor = '#d97706'; badge = '⌛ פספסת';
+      } else if (m.cal > 0) {
+        const pct = m.cal / dayTarget;
+        if (pct > 1.10) { calColor = 'var(--danger)'; badge = '⚠️ חרגת'; }
+        else if (pct >= 0.85) { calColor = 'var(--accent)'; badge = '✓ ביעד'; }
+        else { calColor = 'var(--warning)'; badge = '↓ נמוך'; }
+      }
+      if (isToday) border = '2px solid var(--blue)';
+      const todayBadge = isToday ? '<span style="font-size:10px; color:#fff; background:var(--blue); border-radius:8px; padding:2px 7px; font-weight:700; margin-right:5px;">היום</span>' : '';
+
+      return `<div onclick="openDayDetail('${day.date}')" style="background:${bg}; border:${border}; border-radius:14px; padding:12px 14px; margin-bottom:8px; cursor:pointer; box-shadow:0 1px 4px rgba(30,60,120,0.04);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div style="font-size:14px; font-weight:700;">${dayName} <span style="color:var(--muted); font-weight:600; font-size:13px;">${dayNum}/${monthNum}</span> ${todayBadge}</div>
+            <div style="font-size:11px; color:${calColor}; font-weight:700; margin-top:2px;">${badge}</div>
+          </div>
+          <div style="text-align:left;">
+            <div style="font-size:20px; font-weight:800; color:${calColor}; line-height:1;">${m.cal>0 ? n(m.cal) : '—'}</div>
+            ${m.cal>0 ? `<div style="font-size:10px; color:var(--muted); margin-top:3px;">/ ${n(dayTarget)} קל'</div>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ══════════════════════════════════════════
+// 🗑️ DELETE ENTIRE DAY
+// ══════════════════════════════════════════
+async function deleteEntireDay() {
+  const date = _currentDayExport;
+  if (!date) return;
+  const today = todayStr();
+  const heDate = heDay(date);
+
+  const ok = confirm(`האם למחוק את כל הנתונים של ${heDate}?\n\nפעולה זו אינה ניתנת לשחזור.`);
+  if (!ok) return;
+
+  if (date === today) {
+    // Today — clear entries
+    entries = [];
+    await fbSet('today', {date, entries:[]});
+  } else {
+    // History day — remove from history array
+    if (!Array.isArray(history)) history = history ? Object.values(history).filter(Boolean) : [];
+    const idx = history.findIndex(d => d.date === date);
+    if (idx >= 0) {
+      history.splice(idx, 1);
+      await fbSet('history', history);
+    }
+  }
+
+  closeModal();
+  renderDashboard();
+  renderHistory();
+  if (_historyView === 'range') renderRange();
 }
 
 function formatWeekRange(start) {
@@ -2877,6 +3402,294 @@ function aiScrollBottom() { const e=document.getElementById('ai-messages'); setT
 function sendQuickPrompt(text) { document.getElementById('ai-input').value=text; sendAiMessage(); }
 function handleAiKeydown(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAiMessage();} }
 function autoResizeAi(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+
+// ══════════════════════════════════════════
+// 🤖 MODAL AI CHAT (inside add modal — fast multi-add for any day)
+// ══════════════════════════════════════════
+const MODAL_AI_SYSTEM = `אתה עוזר תזונה חכם המסייע למשתמש להזין במהירות מאכלים שצרך. ענה תמיד בעברית, קצר ומדויק.
+
+חשוב מאוד: המשתמש בא להזין כמה מאכלים מהר. אל תשאל יותר מדי שאלות — אם המשתמש מתאר מנה, הערך משקלים סבירים והוסף ישירות.
+
+כשהמשתמש מתאר מאכל אחד או יותר:
+1. זהה את כל הפריטים.
+2. הערך משקל בגרמים לפי תיאור (אם לא צוין: כוס=240ג׳, פרוסה=30ג׳, ביצה=50ג׳, כף=15ג׳, מנה רגילה=150-200ג׳).
+3. החזר תשובה קצרה: רשימת הפריטים עם קלוריות.
+4. הוסף ישירות לרשימה בפורמט הזה (תמיד JSON תקין):
+
+\`\`\`ADD_FOODS
+[
+  {"name":"שם פריט 1","cal100":120,"grams":50},
+  {"name":"שם פריט 2","cal100":250,"grams":100}
+]
+\`\`\`
+
+לתמונה:
+- אם רואים תווית תזונתית באריזה — קרא את הערכים המדויקים מהאריזה.
+- אם רואים מנה/צלחת — זהה כל פריט והערך משקל לפי הגודל.
+- החזר ADD_FOODS עם כל הפריטים.
+
+אם לא ברור משהו ספציפי — שאל שאלה אחת קצרה בלבד.
+אל תשאל "האם להוסיף?" — תמיד תוסיף ישירות.
+
+לפריט בודד אפשר גם:
+\`\`\`ADD_FOOD
+{"name":"שם","cal100":120,"grams":100}
+\`\`\``;
+
+let modalAiMessages = [];
+let modalAiLoading = false;
+let modalAiInited = false;
+let modalAiPendingImage = null;
+let _lastModalAiTarget = null;
+
+function initModalAi() {
+  if (modalAiInited) return;
+  modalAiInited = true;
+  const c = document.getElementById('modal-ai-messages');
+  c.innerHTML = '';
+  appendModalAiMsg('ai', `שלום! 👋 תאר לי מה אכלת — אני אזהה הכל ואוסיף ישירות.<br><br>💡 דוגמאות:<br>• "סלט עם טונה, ביצה ופרוסת לחם"<br>• "200 גרם חזה עוף, אורז וירקות"<br>• או שלח תמונה 📷`);
+  setTimeout(()=>document.getElementById('modal-ai-input').focus(), 100);
+}
+
+function clearModalAi() {
+  modalAiMessages = [];
+  modalAiInited = false;
+  removeModalAiImage();
+  initModalAi();
+}
+
+function modalAiQuickPrompt(text) {
+  document.getElementById('modal-ai-input').value = text;
+  sendModalAi();
+}
+
+function appendModalAiMsg(role, html) {
+  const c = document.getElementById('modal-ai-messages');
+  const div = document.createElement('div');
+  div.style.cssText = `margin-bottom:10px; display:flex; gap:6px; ${role==='user'?'flex-direction:row-reverse;':''}`;
+  const bg = role==='user' ? 'background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff;' : 'background:#fff; color:var(--text); border:1px solid var(--border);';
+  div.innerHTML = `<div style="${bg} padding:8px 12px; border-radius:14px; max-width:85%; font-size:13px; line-height:1.6; word-break:break-word;">${html}</div>`;
+  c.appendChild(div);
+  setTimeout(()=>{ c.scrollTop = c.scrollHeight; }, 50);
+  return div;
+}
+
+function appendModalAiTyping() {
+  const c = document.getElementById('modal-ai-messages');
+  const div = document.createElement('div');
+  div.style.cssText = 'margin-bottom:10px; display:flex; gap:6px;';
+  div.innerHTML = `<div style="background:#fff; border:1px solid var(--border); padding:8px 14px; border-radius:14px; font-size:13px;">
+    <span style="display:inline-block; animation:pulse 1.2s ease-in-out infinite;">⏳</span> חושב...
+  </div>`;
+  c.appendChild(div);
+  setTimeout(()=>{ c.scrollTop = c.scrollHeight; }, 50);
+  return div;
+}
+
+function appendModalAiUserMsgWithImage(text, imgData) {
+  const c = document.getElementById('modal-ai-messages');
+  const div = document.createElement('div');
+  div.style.cssText = 'margin-bottom:10px; display:flex; gap:6px; flex-direction:row-reverse;';
+  const imgUrl = `data:${imgData.mediaType};base64,${imgData.base64}`;
+  div.innerHTML = `<div style="background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; padding:6px; border-radius:14px; max-width:85%; font-size:13px;">
+    <img src="${imgUrl}" style="width:100%; max-height:140px; object-fit:cover; border-radius:10px; display:block; margin-bottom:${text?'6px':'0'};">
+    ${text ? `<div style="padding:4px 6px;">${text}</div>` : ''}
+  </div>`;
+  c.appendChild(div);
+  setTimeout(()=>{ c.scrollTop = c.scrollHeight; }, 50);
+}
+
+function handleModalAiImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  attachModalAiImage(file);
+}
+
+async function attachModalAiImage(file) {
+  if (!file) return;
+  try {
+    const {blob, mediaType} = await resizeImage(file, 1280, 0.85);
+    const base64 = await new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>res(r.result.split(',')[1]);
+      r.onerror=()=>rej(new Error('Read failed'));
+      r.readAsDataURL(blob);
+    });
+    if (modalAiPendingImage && modalAiPendingImage.previewUrl) URL.revokeObjectURL(modalAiPendingImage.previewUrl);
+    const previewUrl = URL.createObjectURL(blob);
+    modalAiPendingImage = {base64, mediaType, previewUrl};
+    showModalAiImagePreview();
+  } catch(e) {
+    alert('⚠️ שגיאה בקליטת התמונה: ' + e.message);
+  }
+}
+
+function showModalAiImagePreview() {
+  const wrap = document.getElementById('modal-ai-img-preview');
+  const thumb = document.getElementById('modal-ai-img-thumb');
+  if (modalAiPendingImage) {
+    thumb.src = modalAiPendingImage.previewUrl;
+    wrap.style.display = 'block';
+  } else {
+    wrap.style.display = 'none';
+    thumb.src = '';
+  }
+}
+
+function removeModalAiImage() {
+  if (modalAiPendingImage && modalAiPendingImage.previewUrl) URL.revokeObjectURL(modalAiPendingImage.previewUrl);
+  modalAiPendingImage = null;
+  showModalAiImagePreview();
+}
+
+async function sendModalAi() {
+  const inp = document.getElementById('modal-ai-input');
+  const text = inp.value.trim();
+  if ((!text && !modalAiPendingImage) || modalAiLoading) return;
+
+  if (!ANTHROPIC_KEY) {
+    appendModalAiMsg('ai', '⚠️ לא הוגדר מפתח AI.<br>פרופיל ← מפתח AI ← הזן ושמור.');
+    return;
+  }
+
+  const imgData = modalAiPendingImage;
+  inp.value = '';
+  inp.style.height = '42px';
+  modalAiPendingImage = null;
+  showModalAiImagePreview();
+
+  const finalText = text || (imgData ? 'זהה את כל המאכלים בתמונה והוסף לרשימה.' : '');
+
+  // Show user message
+  if (imgData) appendModalAiUserMsgWithImage(text, imgData);
+  else appendModalAiMsg('user', escapeModalAi(finalText));
+
+  // Add to history
+  modalAiMessages.push(buildUserMessage(finalText, imgData));
+
+  modalAiLoading = true;
+  document.getElementById('modal-ai-send').disabled = true;
+  const typing = appendModalAiTyping();
+
+  try {
+    // Build context with target day info
+    const today = todayStr();
+    const targetDate = _addToDate || today;
+    let dayCtx = '';
+    if (targetDate === today) {
+      const consumed = entries.reduce((s,e)=>s+e.calories, 0);
+      const target = profile?.targetCalories || 1650;
+      dayCtx = `[המשתמש מוסיף ליום הנוכחי. נצרכו עד כה ${consumed} קל' מתוך יעד ${target}]`;
+    } else {
+      const isFuture = targetDate > today;
+      dayCtx = `[המשתמש ${isFuture ? 'מתכנן' : 'משלים'} את היום ${targetDate} (${heDay(targetDate)}). הוא רוצה להזין כמה מאכלים שאכל באותו יום במהירות]`;
+    }
+
+    // Inject context into first message
+    const firstMsg = modalAiMessages[0];
+    let firstContent;
+    if (typeof firstMsg.content === 'string') {
+      firstContent = dayCtx + '\n\n' + firstMsg.content;
+    } else {
+      firstContent = firstMsg.content.map(c => {
+        if (c.type === 'text') return {...c, text: dayCtx + '\n\n' + c.text};
+        return c;
+      });
+    }
+    const msgs = [
+      {role: firstMsg.role, content: firstContent},
+      ...modalAiMessages.slice(1)
+    ];
+
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 800,
+        system: MODAL_AI_SYSTEM,
+        messages: msgs
+      })
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error.message || JSON.stringify(d.error));
+    const reply = d.content?.find(c=>c.type==='text')?.text || 'שגיאה';
+    typing.remove();
+
+    // Look for ADD_FOODS (multiple) or ADD_FOOD (single)
+    const multiMatch = reply.match(/```ADD_FOODS\s*([\s\S]*?)```/);
+    const singleMatch = reply.match(/```ADD_FOOD\s*([\s\S]*?)```/);
+
+    if (multiMatch) {
+      try {
+        const arr = JSON.parse(multiMatch[1].trim());
+        const cleanText = reply.replace(/```ADD_FOODS[\s\S]*?```/, '').trim();
+        if (cleanText) appendModalAiMsg('ai', formatModalAi(cleanText));
+        let added = 0;
+        let totalCal = 0;
+        for (const fd of arr) {
+          if (fd.name && fd.cal100 != null && fd.grams) {
+            await addEntry(fd.name, fd.cal100, fd.grams);
+            added++;
+            totalCal += Math.round(fd.cal100 * fd.grams / 100);
+          }
+        }
+        const dateLabel = (_addToDate && _addToDate !== today) ? heDay(_addToDate) : 'היום';
+        appendModalAiMsg('ai', `✅ נוספו <strong>${added} פריטים</strong> ל-${dateLabel}<br>סה"כ <strong>${totalCal} קל'</strong> 🎯`);
+      } catch(e) {
+        appendModalAiMsg('ai', formatModalAi(reply) + '<br><br>⚠️ נכשל פיענוח הנתונים — נסה שוב.');
+      }
+    } else if (singleMatch) {
+      try {
+        const fd = JSON.parse(singleMatch[1].trim());
+        const cleanText = reply.replace(/```ADD_FOOD[\s\S]*?```/, '').trim();
+        if (cleanText) appendModalAiMsg('ai', formatModalAi(cleanText));
+        await addEntry(fd.name, fd.cal100, fd.grams);
+        const cal = Math.round(fd.cal100 * fd.grams / 100);
+        const dateLabel = (_addToDate && _addToDate !== today) ? heDay(_addToDate) : 'היום';
+        appendModalAiMsg('ai', `✅ <strong>${fd.name}</strong> (${fd.grams}ג', ${cal} קל') נוסף ל-${dateLabel}`);
+      } catch(e) {
+        appendModalAiMsg('ai', formatModalAi(reply));
+      }
+    } else {
+      appendModalAiMsg('ai', formatModalAi(reply));
+    }
+
+    modalAiMessages.push({role:'assistant', content:reply});
+
+    // Replace image in history with text-only summary to save tokens
+    if (imgData) {
+      const userIdx = modalAiMessages.length - 2;
+      const orig = modalAiMessages[userIdx];
+      if (Array.isArray(orig.content)) {
+        const txtPart = orig.content.find(c => c.type === 'text');
+        modalAiMessages[userIdx] = { role:'user', content: '[שלחתי תמונה של מאכל] ' + (txtPart?.text||'') };
+      }
+    }
+  } catch(err) {
+    typing.remove();
+    appendModalAiMsg('ai', '⚠️ שגיאה: ' + escapeModalAi(err?.message || 'unknown'));
+  }
+  modalAiLoading = false;
+  document.getElementById('modal-ai-send').disabled = false;
+}
+
+function formatModalAi(text) {
+  // Basic markdown: **bold**, line breaks
+  return escapeModalAi(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
+function escapeModalAi(text) {
+  return String(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 
 // ══════════════════════════════════════════
 // WEIGHT TRACKING
