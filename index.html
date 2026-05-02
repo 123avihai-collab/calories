@@ -634,6 +634,94 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
         </div>
         <button class="btn btn-w" onclick="saveSettings()">שמור שינויים</button>
       </div>
+
+      <!-- 🎯 GOAL CALCULATOR (by time) -->
+      <div class="card" style="margin-bottom:14px; border-color:rgba(124,58,237,0.3); background:linear-gradient(180deg,#fff,#faf5ff);">
+        <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleGoalCalc()">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:20px;">🎯</span>
+            <div>
+              <div style="font-size:14px; font-weight:800;">מחשבון יעד לפי זמן</div>
+              <div style="font-size:11px; color:var(--muted);">חשב כמה קלוריות לאכול כדי להגיע למשקל יעד</div>
+            </div>
+          </div>
+          <span id="goal-calc-arrow" style="font-size:18px; color:var(--purple); transition:transform 0.2s;">▼</span>
+        </div>
+
+        <div id="goal-calc-body" style="display:none; margin-top:14px; padding-top:14px; border-top:1px dashed var(--border);">
+          <div style="display:flex; gap:10px; margin-bottom:12px;">
+            <div style="flex:1;">
+              <label class="lbl" style="font-size:12px;">משקל נוכחי (ק"ג)</label>
+              <input class="input" id="goal-current-weight" type="number" step="0.1" inputmode="decimal" oninput="updateGoalCalc()">
+            </div>
+            <div style="flex:1;">
+              <label class="lbl" style="font-size:12px;">משקל יעד (ק"ג)</label>
+              <input class="input" id="goal-target-weight" type="number" step="0.1" inputmode="decimal" oninput="updateGoalCalc()">
+            </div>
+          </div>
+
+          <div style="margin-bottom:12px;">
+            <label class="lbl" style="font-size:12px;">בחר תקופה</label>
+            <div style="display:flex; gap:6px; margin-bottom:10px;">
+              <button class="chip" onclick="setGoalDuration('weeks',4)" style="font-size:11px;">חודש</button>
+              <button class="chip" onclick="setGoalDuration('weeks',8)" style="font-size:11px;">חודשיים</button>
+              <button class="chip" onclick="setGoalDuration('weeks',12)" style="font-size:11px;">3 חודשים</button>
+              <button class="chip" onclick="setGoalDuration('weeks',26)" style="font-size:11px;">חצי שנה</button>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <div style="flex:1;">
+                <label class="lbl" style="font-size:11px;">או מספר שבועות</label>
+                <input class="input" id="goal-weeks" type="number" min="1" inputmode="numeric" oninput="onGoalWeeksInput()" style="font-size:13px;">
+              </div>
+              <div style="flex:1;">
+                <label class="lbl" style="font-size:11px;">או תאריך יעד</label>
+                <input class="input" id="goal-target-date" type="date" oninput="onGoalDateInput()" style="font-size:13px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Result panel -->
+          <div id="goal-calc-result" style="display:none; padding:14px; background:#fff; border-radius:12px; border:1.5px solid var(--purple); margin-bottom:10px;">
+            <!-- Hero recommendation -->
+            <div style="text-align:center; margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed var(--border);">
+              <div style="font-size:11px; color:var(--muted); font-weight:700;">💡 יעד קלוריות יומי מומלץ</div>
+              <div style="font-size:34px; font-weight:800; color:var(--purple); line-height:1.2;" id="goal-rec-cal">—</div>
+              <div style="font-size:11px; color:var(--muted);">קלוריות ליום</div>
+            </div>
+
+            <!-- Detail grid -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+              <div style="background:var(--card2); border-radius:8px; padding:8px; text-align:center;">
+                <div style="font-size:13px; font-weight:800; color:var(--text);" id="goal-loss-amount">—</div>
+                <div style="font-size:10px; color:var(--muted);">סה"כ לרדת (ק"ג)</div>
+              </div>
+              <div style="background:var(--card2); border-radius:8px; padding:8px; text-align:center;">
+                <div style="font-size:13px; font-weight:800; color:var(--text);" id="goal-rate-week">—</div>
+                <div style="font-size:10px; color:var(--muted);">קצב (ק"ג/שבוע)</div>
+              </div>
+              <div style="background:var(--card2); border-radius:8px; padding:8px; text-align:center;">
+                <div style="font-size:13px; font-weight:800; color:var(--text);" id="goal-deficit">—</div>
+                <div style="font-size:10px; color:var(--muted);">גרעון יומי (קל')</div>
+              </div>
+              <div style="background:var(--card2); border-radius:8px; padding:8px; text-align:center;">
+                <div style="font-size:13px; font-weight:800; color:var(--text);" id="goal-tdee-display">—</div>
+                <div style="font-size:10px; color:var(--muted);">TDEE שלך (קל')</div>
+              </div>
+            </div>
+
+            <!-- Warning / status -->
+            <div id="goal-warning" style="padding:10px 12px; border-radius:10px; font-size:12px; line-height:1.5; margin-bottom:10px; display:none;"></div>
+
+            <!-- Apply button -->
+            <button class="btn btn-w" id="goal-apply-btn" onclick="applyGoalCalc()" style="background:linear-gradient(135deg,#7c3aed,#6d28d9); font-size:13px;">🎯 החל יעד זה כיעד הקלוריות שלי</button>
+          </div>
+
+          <!-- Empty state -->
+          <div id="goal-calc-empty" style="text-align:center; padding:14px; color:var(--muted); font-size:12px;">
+            הזן משקל נוכחי, יעד ותקופה כדי לחשב
+          </div>
+        </div>
+      </div>
       <!-- Firebase setup -->
       <div class="card" style="margin-bottom:14px; border-color:rgba(37,99,235,0.3);">
         <div style="font-size:14px; font-weight:700; margin-bottom:8px;">🔥 סנכרון בין מכשירים (Firebase)</div>
@@ -3107,9 +3195,244 @@ async function saveSettings() {
     activityLevel:document.getElementById('set-activity').value,
     goal:setCurrentGoal, lossRate:setCurrentRate
   };
-  p.targetCalories=calcTarget(p); p.bmr=Math.round(calcBMR(p)); p.tdee=calcTDEE(p);
+  // If user changed loss rate manually, drop custom deficit (they chose a standard rate)
+  // If user only updated weight/height/age and had a custom calc target, keep deficit and recalc target on new TDEE
+  const oldDeficit = profile?.customDailyDeficit;
+  const rateChanged = profile?.lossRate !== setCurrentRate || profile?.goal !== setCurrentGoal;
+
+  if (oldDeficit && !rateChanged) {
+    // Preserve custom calculator target — recompute with new TDEE
+    p.bmr = Math.round(calcBMR(p));
+    p.tdee = calcTDEE(p);
+    p.targetCalories = Math.max(p.tdee - oldDeficit, 1200);
+    p.customDailyDeficit = oldDeficit;
+  } else {
+    delete p.customDailyDeficit;
+    p.targetCalories = calcTarget(p);
+    p.bmr = Math.round(calcBMR(p));
+    p.tdee = calcTDEE(p);
+  }
   profile=p;
   await fbSet('profile',p);
+  showScreen('dashboard');
+}
+
+// ══════════════════════════════════════════
+// 🎯 GOAL CALCULATOR (target weight × time → daily calories)
+// ══════════════════════════════════════════
+const KG_TO_KCAL = 7700; // 1 kg of body fat ≈ 7700 kcal
+
+function toggleGoalCalc() {
+  const body = document.getElementById('goal-calc-body');
+  const arrow = document.getElementById('goal-calc-arrow');
+  const isOpen = body.style.display !== 'none';
+  if (isOpen) {
+    body.style.display = 'none';
+    arrow.style.transform = 'rotate(0)';
+  } else {
+    body.style.display = 'block';
+    arrow.style.transform = 'rotate(180deg)';
+    // Pre-fill current weight from profile
+    const cwInp = document.getElementById('goal-current-weight');
+    if (!cwInp.value && profile?.weight) cwInp.value = profile.weight;
+    updateGoalCalc();
+  }
+}
+
+function setGoalDuration(unit, val) {
+  if (unit === 'weeks') {
+    document.getElementById('goal-weeks').value = val;
+    // Compute target date from today + weeks
+    const d = new Date();
+    d.setDate(d.getDate() + val * 7);
+    document.getElementById('goal-target-date').value = dateToISO(d);
+  }
+  updateGoalCalc();
+}
+
+function onGoalWeeksInput() {
+  const w = +document.getElementById('goal-weeks').value;
+  if (w > 0) {
+    const d = new Date();
+    d.setDate(d.getDate() + w * 7);
+    document.getElementById('goal-target-date').value = dateToISO(d);
+  }
+  updateGoalCalc();
+}
+
+function onGoalDateInput() {
+  const dateStr = document.getElementById('goal-target-date').value;
+  if (dateStr) {
+    const d = new Date(dateStr + 'T12:00:00');
+    const today = new Date();
+    today.setHours(12,0,0,0);
+    const diffDays = Math.round((d - today) / (1000*60*60*24));
+    if (diffDays > 0) {
+      const weeks = Math.round(diffDays / 7 * 10) / 10;
+      document.getElementById('goal-weeks').value = weeks;
+    }
+  }
+  updateGoalCalc();
+}
+
+function updateGoalCalc() {
+  const cw = +document.getElementById('goal-current-weight').value;
+  const tw = +document.getElementById('goal-target-weight').value;
+  const weeks = +document.getElementById('goal-weeks').value;
+
+  const resultEl = document.getElementById('goal-calc-result');
+  const emptyEl = document.getElementById('goal-calc-empty');
+
+  if (!cw || !tw || !weeks || weeks <= 0) {
+    resultEl.style.display = 'none';
+    emptyEl.style.display = 'block';
+    return;
+  }
+
+  const lossKg = cw - tw;
+  if (Math.abs(lossKg) < 0.1) {
+    resultEl.style.display = 'none';
+    emptyEl.style.display = 'block';
+    emptyEl.textContent = '⚠️ משקל יעד זהה למשקל נוכחי';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+  resultEl.style.display = 'block';
+
+  // Build temp profile to compute TDEE with current weight (more accurate at start)
+  const tempP = {
+    ...profile,
+    weight: cw,
+    age: profile?.age || +document.getElementById('set-age').value || 34,
+    height: profile?.height || +document.getElementById('set-height').value || 174,
+    gender: profile?.gender || 'male',
+    activityLevel: document.getElementById('set-activity').value || profile?.activityLevel || 'moderate'
+  };
+  const tdee = calcTDEE(tempP);
+
+  const totalDays = weeks * 7;
+  const totalKcalToCut = lossKg * KG_TO_KCAL; // negative if gaining
+  const dailyDeficit = Math.round(totalKcalToCut / totalDays);
+  const recommendedCal = tdee - dailyDeficit;
+  const ratePerWeek = Math.round((lossKg / weeks) * 100) / 100;
+
+  document.getElementById('goal-rec-cal').textContent = n(recommendedCal);
+  document.getElementById('goal-loss-amount').textContent = (lossKg > 0 ? '−' : '+') + Math.abs(lossKg).toFixed(1) + ' ק"ג';
+  document.getElementById('goal-rate-week').textContent = (ratePerWeek > 0 ? '−' : '+') + Math.abs(ratePerWeek).toFixed(2);
+  document.getElementById('goal-deficit').textContent = (dailyDeficit > 0 ? '−' : '+') + n(Math.abs(dailyDeficit));
+  document.getElementById('goal-tdee-display').textContent = n(tdee);
+
+  // ── Safety analysis ──
+  const warn = document.getElementById('goal-warning');
+  const applyBtn = document.getElementById('goal-apply-btn');
+  const gender = tempP.gender;
+  const minSafeCal = gender === 'female' ? 1200 : 1500;
+  const absRate = Math.abs(ratePerWeek);
+  const ratePctOfBody = (absRate / cw) * 100; // % of body weight per week
+
+  let level = 'ok'; // 'ok' | 'caution' | 'unsafe'
+  let messages = [];
+
+  if (recommendedCal < minSafeCal) {
+    level = 'unsafe';
+    messages.push(`היעד דורש ירידה ל-<strong>${n(recommendedCal)} קל'/יום</strong>, מתחת למינימום בריא של ${n(minSafeCal)} (${gender==='female'?'אישה':'גבר'}).`);
+  }
+  if (lossKg > 0 && absRate > 1.0) {
+    level = 'unsafe';
+    messages.push(`קצב של <strong>${absRate.toFixed(2)} ק"ג/שבוע</strong> מהיר מדי (מומלץ עד 1 ק"ג/שבוע).`);
+  } else if (lossKg > 0 && absRate > 0.75) {
+    if (level !== 'unsafe') level = 'caution';
+    messages.push(`קצב של <strong>${absRate.toFixed(2)} ק"ג/שבוע</strong> אגרסיבי — דורש משמעת גבוהה.`);
+  }
+  if (lossKg > 0 && ratePctOfBody > 1.0) {
+    if (level !== 'unsafe') level = 'caution';
+    messages.push(`הקצב הוא ${ratePctOfBody.toFixed(1)}% ממשקל הגוף בשבוע — מומלץ עד 1%.`);
+  }
+  if (lossKg < 0 && Math.abs(ratePerWeek) > 0.5) {
+    if (level !== 'unsafe') level = 'caution';
+    messages.push(`עלייה של יותר מ-0.5 ק"ג/שבוע עלולה להיות בעיקרה שומן ולא שריר.`);
+  }
+
+  // Suggest minimum safe duration if unsafe
+  if (level === 'unsafe' && lossKg > 0) {
+    const safeDeficit = Math.min(750, tdee - minSafeCal); // cap at 750 kcal/day
+    if (safeDeficit > 0) {
+      const safeDays = Math.ceil(totalKcalToCut / safeDeficit);
+      const safeWeeks = Math.ceil(safeDays / 7);
+      messages.push(`💡 לתקופה בטוחה: לפחות <strong>${safeWeeks} שבועות</strong> (כ-${Math.round(safeWeeks/4.3)} חודשים).`);
+    }
+  }
+
+  if (messages.length === 0) {
+    warn.style.display = 'block';
+    warn.style.background = 'var(--accent-light)';
+    warn.style.border = '1px solid var(--accent-dim)';
+    warn.style.color = 'var(--text)';
+    warn.innerHTML = `✅ <strong>קצב בטוח ובריא</strong> — היעד ריאלי ובר-השגה.`;
+  } else if (level === 'unsafe') {
+    warn.style.display = 'block';
+    warn.style.background = 'var(--danger-light)';
+    warn.style.border = '1px solid #fecaca';
+    warn.style.color = 'var(--text)';
+    warn.innerHTML = `⛔ <strong style="color:var(--danger);">לא בטוח לבריאות</strong><br>` + messages.map(m=>'• '+m).join('<br>');
+  } else {
+    warn.style.display = 'block';
+    warn.style.background = 'var(--warning-light)';
+    warn.style.border = '1px solid #fcd34d';
+    warn.style.color = 'var(--text)';
+    warn.innerHTML = `⚠️ <strong style="color:var(--warning);">קצב אגרסיבי - שים לב</strong><br>` + messages.map(m=>'• '+m).join('<br>');
+  }
+
+  // Disable apply if unsafe
+  if (level === 'unsafe') {
+    applyBtn.disabled = true;
+    applyBtn.style.opacity = '0.5';
+    applyBtn.style.cursor = 'not-allowed';
+    applyBtn.innerHTML = '⛔ לא ניתן להחיל יעד שאינו בטוח';
+  } else {
+    applyBtn.disabled = false;
+    applyBtn.style.opacity = '1';
+    applyBtn.style.cursor = 'pointer';
+    applyBtn.innerHTML = '🎯 החל יעד זה כיעד הקלוריות שלי';
+  }
+
+  // Store last computed values
+  _goalCalcCache = { recommendedCal, dailyDeficit, weeks, lossKg, ratePerWeek, tdee };
+}
+
+let _goalCalcCache = null;
+
+async function applyGoalCalc() {
+  if (!_goalCalcCache) return;
+  const { recommendedCal, dailyDeficit, weeks, ratePerWeek, lossKg } = _goalCalcCache;
+
+  const ok = confirm(
+    `להחיל את היעד הזה?\n\n` +
+    `• יעד יומי: ${n(recommendedCal)} קל'\n` +
+    `• גרעון: ${n(Math.abs(dailyDeficit))} קל'/יום\n` +
+    `• קצב: ${Math.abs(ratePerWeek).toFixed(2)} ק"ג/שבוע\n` +
+    `• משך: ${weeks} שבועות\n\n` +
+    `(ניתן לחזור להגדרות ולשנות בכל עת)`
+  );
+  if (!ok) return;
+
+  const p = {
+    ...profile,
+    targetCalories: recommendedCal,
+    customDailyDeficit: dailyDeficit, // mark as custom
+    goal: lossKg > 0 ? 'lose' : (lossKg < 0 ? 'gain' : 'maintain'),
+    goalTargetWeight: +document.getElementById('goal-target-weight').value,
+    goalTargetDate: document.getElementById('goal-target-date').value,
+    goalWeeks: weeks
+  };
+  profile = p;
+  await fbSet('profile', p);
+
+  // Update preview in settings
+  document.getElementById('set-preview').textContent = n(recommendedCal);
+
+  alert(`✅ היעד הוחל!\nיעד יומי חדש: ${n(recommendedCal)} קל'`);
   showScreen('dashboard');
 }
 
