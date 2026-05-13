@@ -1933,8 +1933,11 @@ function renderQuickAdd() {
 // ══════════════════════════════════════════
 // FOOD ACTIONS
 // ══════════════════════════════════════════
-async function addEntryToDay(date, name, cal100, grams, calories, foodId) {
-  const m = getMacros(foodId||0, cal100, grams||100);
+async function addEntryToDay(date, name, cal100, grams, calories, foodId, macros) {
+  const hasMacros = macros && (macros.prot != null || macros.carb != null || macros.fat != null);
+  const m = hasMacros
+    ? { prot: Math.round(macros.prot||0), carb: Math.round(macros.carb||0), fat: Math.round(macros.fat||0) }
+    : getMacros(foodId||0, cal100, grams||100);
   const today = todayStr();
   const isFuture = date > today;
   const item = {
@@ -1975,8 +1978,8 @@ async function addEntryToDay(date, name, cal100, grams, calories, foodId) {
 }
 
 // Backward-compatible wrapper — uses _addToDate (null → today)
-async function addEntry(name, cal100, grams, calories, foodId) {
-  return addEntryToDay(_addToDate || todayStr(), name, cal100, grams, calories, foodId);
+async function addEntry(name, cal100, grams, calories, foodId, macros) {
+  return addEntryToDay(_addToDate || todayStr(), name, cal100, grams, calories, foodId, macros);
 }
 
 async function deleteEntry(id, btn) {
@@ -2023,7 +2026,9 @@ async function quickAdd(pantryId) {
   const chip = document.getElementById('chip-'+pantryId);
   if (chip) { chip.style.borderColor='var(--accent)'; chip.style.background='var(--accent-light)'; }
   // addEntry internally calls saveToPantry — do NOT call it again (caused count to double)
-  await addEntry(item.name, item.cal100||0, item.grams, item.calories);
+  const macros = (item.prot != null || item.carb != null || item.fat != null)
+    ? {prot: item.prot, carb: item.carb, fat: item.fat} : null;
+  await addEntry(item.name, item.cal100||0, item.grams, item.calories, 0, macros);
   setTimeout(()=>{ if(chip){chip.style.borderColor='';chip.style.background='';} },800);
 }
 
@@ -2051,7 +2056,10 @@ async function saveToPantry(item) {
       lastUsed: Date.now(),
       grams:    item.grams,
       calories: item.calories,
-      cal100:   item.cal100 || pantry[idx].cal100 || 0
+      cal100:   item.cal100 || pantry[idx].cal100 || 0,
+      prot:     item.prot != null ? item.prot : pantry[idx].prot,
+      carb:     item.carb != null ? item.carb : pantry[idx].carb,
+      fat:      item.fat  != null ? item.fat  : pantry[idx].fat
     };
   } else {
     // New item
@@ -2061,6 +2069,9 @@ async function saveToPantry(item) {
       cal100: item.cal100 || 0,
       grams: item.grams,
       calories: item.calories,
+      prot: item.prot,
+      carb: item.carb,
+      fat:  item.fat,
       count: 1,
       lastUsed: Date.now()
     }];
@@ -2106,7 +2117,9 @@ function renderPantryTab() {
 async function quickAddFromPantry(id) {
   const item = pantry.find(p=>p.id===id);
   if (!item) return;
-  await addEntry(item.name, item.cal100||0, item.grams, item.calories);
+  const macros = (item.prot != null || item.carb != null || item.fat != null)
+    ? {prot: item.prot, carb: item.carb, fat: item.fat} : null;
+  await addEntry(item.name, item.cal100||0, item.grams, item.calories, 0, macros);
   closeModal();
 }
 
@@ -3106,7 +3119,7 @@ const AI_SYSTEM = `אתה עוזר תזונה חכם. ענה תמיד בעברי
 
 אם המשתמש בכל זאת אומר "כן" / "הוסף" אחרי חישוב — ענה עם בלוק:
 \`\`\`ADD_FOOD
-{"name":"שם","cal100":קל_ל_100_גרם,"grams":גרמים}
+{"name":"שם","cal100":קל_ל_100_גרם,"grams":גרמים,"prot":חלבון_ל_100_גרם,"carb":פחמימות_ל_100_גרם,"fat":שומן_ל_100_גרם}
 \`\`\``;
 
 let aiMessages = [];
@@ -3198,8 +3211,14 @@ async function processAi(text, imgData) {
         const fd = JSON.parse(addMatch[1].trim());
         const clean = reply.replace(/```ADD_FOOD[\s\S]*?```/g, '').replace(/```FOOD_CARD[\s\S]*?```/g, '').trim();
         if (clean) appendAiMsg('ai', clean);
-        await addEntry(fd.name, fd.cal100, fd.grams);
-        appendAiMsg('ai', `✅ **${fd.name}** (${fd.grams}ג׳, ${Math.round(fd.cal100*fd.grams/100)} קל׳) נוסף לרשימה!`);
+        const calories = Math.round(fd.cal100*fd.grams/100);
+        const macros = (fd.prot != null || fd.carb != null || fd.fat != null) ? {
+          prot: Math.round((fd.prot || 0) * fd.grams / 100),
+          carb: Math.round((fd.carb || 0) * fd.grams / 100),
+          fat:  Math.round((fd.fat  || 0) * fd.grams / 100)
+        } : null;
+        await addEntry(fd.name, fd.cal100, fd.grams, calories, 0, macros);
+        appendAiMsg('ai', `✅ **${fd.name}** (${fd.grams}ג׳, ${calories} קל׳) נוסף לרשימה!`);
       } catch { appendAiMsg('ai', reply); }
     } else if (cardMatches.length > 0) {
       // Show clean text + interactive food cards with 2 buttons each
@@ -3393,7 +3412,12 @@ async function aiCardAddToToday(cardId) {
   const fd = window._aiFoodCards?.[cardId];
   if (!fd) return;
   const calories = Math.round(fd.cal100 * fd.grams / 100);
-  await addEntry(fd.name, fd.cal100, fd.grams, calories);
+  const macros = (fd.prot != null || fd.carb != null || fd.fat != null) ? {
+    prot: Math.round((fd.prot || 0) * fd.grams / 100),
+    carb: Math.round((fd.carb || 0) * fd.grams / 100),
+    fat:  Math.round((fd.fat  || 0) * fd.grams / 100)
+  } : null;
+  await addEntry(fd.name, fd.cal100, fd.grams, calories, 0, macros);
   // Replace buttons with confirmation
   const actions = document.getElementById(cardId + '-actions');
   if (actions) {
