@@ -3198,7 +3198,24 @@ const AI_SYSTEM = `אתה עוזר תזונה חכם. ענה תמיד בעברי
 אם המשתמש בכל זאת אומר "כן" / "הוסף" אחרי חישוב — ענה עם בלוק:
 \`\`\`ADD_FOOD
 {"name":"שם","cal100":קל_ל_100_גרם,"grams":גרמים,"prot":חלבון_ל_100_גרם,"carb":פחמימות_ל_100_גרם,"fat":שומן_ל_100_גרם}
-\`\`\``;
+\`\`\`
+
+⭐ שקילה ומדידות גוף:
+אם המשתמש מדווח על **משקל גופו** ("שקלתי 78.3", "המשקל שלי היום 79", "אני 80 ק"ג") — הוסף בלוק LOG_WEIGHT. המשקל בק"ג. אם המשתמש לא ציין תאריך — דלג על השדה (יישמר היום).
+\`\`\`LOG_WEIGHT
+{"weight":78.3,"note":"הערה אופציונלית"}
+\`\`\`
+
+אם המשתמש מדווח על **היקפי גוף** (חזה/מותניים/בטן/ירך/יד קדמית, כולם בס"מ) — הוסף בלוק LOG_MEASURE. הוסף רק את השדות שהמשתמש ציין. שמות השדות: chest, waist, belly, thigh, arm.
+\`\`\`LOG_MEASURE
+{"chest":100,"waist":85,"belly":90,"thigh":55,"arm":35,"note":"הערה אופציונלית"}
+\`\`\`
+
+חוקים לבלוקים האלה:
+- הוצא בלוק רק כשהמשתמש בפועל מדווח על מדידה שלו ("שקלתי", "המותניים שלי", "המדידה היום"). **אל תוציא** בלוק עבור שאלות תאורטיות, יעדים, או דיון כללי.
+- אם המשתמש ציין תאריך מפורש (אתמול, בשבוע שעבר 25/5) — הוסף שדה \`date\` בפורמט YYYY-MM-DD. אחרת השמט אותו (יישמר תחת היום).
+- אל תכלול בבלוק שדות שהמשתמש לא ציין במפורש.
+- ציין בטקסט החופשי מה בדיוק שמרת, כדי שהמשתמש יוכל לוודא.`;
 
 let aiMessages = [];
 let aiLoading = false;
@@ -3216,6 +3233,8 @@ function initAiChat() {
     <div class="msg-bubble">שלום <strong>${profile?.name||'אביחי'}</strong>! 👋<br><br>
     שאל אותי על קלוריות בכל מאכל — אני יודע הכל 😄<br>
     📷 או <strong>צרף תמונה של מאכל/אריזה</strong> ואני אזהה ואחשב את הערכים.<br><br>
+    ⚖️ אפשר גם להגיד לי <em>"שקלתי 78.5"</em> ואשמור לך את השקילה.<br>
+    📏 או <em>"מותניים 85, חזה 100"</em> ואשמור מדידה.<br><br>
     אוכל גם <strong>להוסיף ישירות לרשימה</strong> אחרי שמחשבים.</div>`;
   c.appendChild(w);
 }
@@ -3280,14 +3299,41 @@ async function processAi(text, imgData) {
     if (d.error) throw new Error(d.error.message || JSON.stringify(d.error));
     const reply = d.content?.find(c=>c.type==='text')?.text || 'שגיאה';
     typing.remove();
-    const addMatch = reply.match(/```ADD_FOOD\s*([\s\S]*?)```/);
-    const cardMatches = [...reply.matchAll(/```FOOD_CARD\s*([\s\S]*?)```/g)];
+    const addMatch       = reply.match(/```ADD_FOOD\s*([\s\S]*?)```/);
+    const cardMatches    = [...reply.matchAll(/```FOOD_CARD\s*([\s\S]*?)```/g)];
+    const weightMatches  = [...reply.matchAll(/```LOG_WEIGHT\s*([\s\S]*?)```/g)];
+    const measureMatches = [...reply.matchAll(/```LOG_MEASURE\s*([\s\S]*?)```/g)];
+
+    // Helper to strip every code block from the visible text
+    const stripAll = (s) => s
+      .replace(/```ADD_FOOD[\s\S]*?```/g, '')
+      .replace(/```FOOD_CARD[\s\S]*?```/g, '')
+      .replace(/```LOG_WEIGHT[\s\S]*?```/g, '')
+      .replace(/```LOG_MEASURE[\s\S]*?```/g, '')
+      .trim();
+
+    // Process body-tracking blocks (silent save + confirmation message)
+    const bodyConfirmations = [];
+    for (const m of weightMatches) {
+      try {
+        const saved = await aiSaveWeight(JSON.parse(m[1].trim()));
+        if (saved) bodyConfirmations.push(`⚖️ **שקילה נשמרה:** ${saved.weight} ק"ג · ${saved.dateLabel}${saved.note?` · _${saved.note}_`:''}`);
+        else bodyConfirmations.push(`⚠️ לא הצלחתי לשמור את השקילה — בדוק את הערכים.`);
+      } catch(e) { console.warn('Failed to parse LOG_WEIGHT', e); }
+    }
+    for (const m of measureMatches) {
+      try {
+        const saved = await aiSaveMeasurement(JSON.parse(m[1].trim()));
+        if (saved) bodyConfirmations.push(`📏 **מדידה נשמרה (${saved.dateLabel}):** ${saved.summary}${saved.note?` · _${saved.note}_`:''}`);
+        else bodyConfirmations.push(`⚠️ לא הצלחתי לשמור את המדידה — לא זוהו ערכים תקפים.`);
+      } catch(e) { console.warn('Failed to parse LOG_MEASURE', e); }
+    }
 
     if (addMatch) {
       // Direct add (after user said "yes")
       try {
         const fd = JSON.parse(addMatch[1].trim());
-        const clean = reply.replace(/```ADD_FOOD[\s\S]*?```/g, '').replace(/```FOOD_CARD[\s\S]*?```/g, '').trim();
+        const clean = stripAll(reply);
         if (clean) appendAiMsg('ai', clean);
         const calories = Math.round(fd.cal100*fd.grams/100);
         const macros = (fd.prot != null || fd.carb != null || fd.fat != null) ? {
@@ -3300,7 +3346,7 @@ async function processAi(text, imgData) {
       } catch { appendAiMsg('ai', reply); }
     } else if (cardMatches.length > 0) {
       // Show clean text + interactive food cards with 2 buttons each
-      const clean = reply.replace(/```FOOD_CARD[\s\S]*?```/g, '').trim();
+      const clean = stripAll(reply);
       if (clean) appendAiMsg('ai', clean, {suppressAddBtn: true});
       cardMatches.forEach(m => {
         try {
@@ -3309,8 +3355,13 @@ async function processAi(text, imgData) {
         } catch(e) { console.warn('Failed to parse FOOD_CARD', e); }
       });
     } else {
-      appendAiMsg('ai', reply);
+      // No food blocks — show stripped text (or full reply if nothing to strip)
+      const clean = (weightMatches.length || measureMatches.length) ? stripAll(reply) : reply;
+      if (clean) appendAiMsg('ai', clean);
     }
+
+    // Append body-tracking confirmations after the main reply
+    bodyConfirmations.forEach(t => appendAiMsg('ai', t));
     aiMessages.push({role:'assistant', content:reply});
 
     // After AI responds, replace image in history with text-only summary to save tokens on next turns
@@ -3544,6 +3595,59 @@ function aiScrollBottom() { const e=document.getElementById('ai-messages'); setT
 function sendQuickPrompt(text) { document.getElementById('ai-input').value=text; sendAiMessage(); }
 function handleAiKeydown(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAiMessage();} }
 function autoResizeAi(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+
+// ── Body-tracking save helpers used by the AI chat ──
+function _aiValidDate(s) { return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : todayStr(); }
+function _aiDateLabel(d) {
+  try { return new Date(d+'T12:00:00').toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'}); }
+  catch { return d; }
+}
+
+async function aiSaveWeight(wd) {
+  const weight = parseFloat(wd?.weight);
+  if (!weight || weight < 20 || weight > 300) return null;
+  const date = _aiValidDate(wd.date);
+  const note = (wd.note || '').toString().trim();
+  weightLog = weightLog.filter(e => e.date !== date);
+  weightLog.push({ id: uid(), date, weight: +weight.toFixed(1), note });
+  weightLog.sort((a,b) => a.date.localeCompare(b.date));
+  await fbSet('weightLog', weightLog);
+  if (profile) {
+    profile.weight = +weight.toFixed(1);
+    await fbSet('profile', profile);
+  }
+  // Refresh UI if user is on the weight screen
+  if (document.getElementById('screen-weight')?.classList.contains('active')) renderWeight();
+  return { weight: +weight.toFixed(1), date, dateLabel: _aiDateLabel(date), note };
+}
+
+async function aiSaveMeasurement(md) {
+  if (!md || typeof md !== 'object') return null;
+  const date = _aiValidDate(md.date);
+  const note = (md.note || '').toString().trim();
+  const rec  = { id: uid(), date, note };
+  const summary = [];
+  MEASURE_FIELDS.forEach(f => {
+    const v = parseFloat(md[f.key]);
+    if (!isNaN(v) && v > 0 && v < 300) {
+      const rv = +v.toFixed(1);
+      rec[f.key] = rv;
+      summary.push(`${f.label} ${rv}ס"מ`);
+    }
+  });
+  if (!summary.length) return null;
+  const idx = measurements.findIndex(m => m.date === date);
+  if (idx >= 0) {
+    rec.id = measurements[idx].id;
+    measurements[idx] = { ...measurements[idx], ...rec };
+  } else {
+    measurements.push(rec);
+  }
+  measurements.sort((a,b) => a.date.localeCompare(b.date));
+  await fbSet('measurements', measurements);
+  if (document.getElementById('screen-weight')?.classList.contains('active')) renderMeasurements();
+  return { date, dateLabel: _aiDateLabel(date), note, summary: summary.join(' · ') };
+}
 
 // ══════════════════════════════════════════
 // WEIGHT TRACKING
