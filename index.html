@@ -561,10 +561,18 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 
   <!-- WEIGHT TRACKING SCREEN -->
   <div id="screen-weight" class="screen">
-    <div style="padding:20px 20px 0; margin-bottom:18px;">
-      <h2 style="font-size:18px; font-weight:700;">מעקב משקל ⚖️</h2>
+    <div style="padding:20px 20px 0; margin-bottom:14px;">
+      <h2 style="font-size:18px; font-weight:700;">מעקב גוף 📊</h2>
     </div>
-    <div style="padding:0 20px;">
+    <div style="padding:0 20px 0;">
+      <div class="tabs">
+        <button class="tab active-blue" id="mtab-weight" onclick="setMtab('weight')">⚖️ משקל</button>
+        <button class="tab" id="mtab-measure" onclick="setMtab('measure')">📏 היקפים</button>
+      </div>
+    </div>
+
+    <!-- ───── WEIGHT TAB ───── -->
+    <div id="mtab-content-weight" style="padding:0 20px;">
 
       <!-- Log weight card -->
       <div class="card" style="margin-bottom:14px; border-color:rgba(22,163,74,0.3);">
@@ -624,6 +632,60 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
         <button class="btn btn-sm btn-ghost" onclick="if(confirm('למחוק את כל יומן המשקל?')) clearWeightLog()">🗑 נקה</button>
       </div>
       <div id="wt-list"></div>
+    </div>
+
+    <!-- ───── MEASUREMENTS TAB ───── -->
+    <div id="mtab-content-measure" style="display:none; padding:0 20px;">
+
+      <!-- Log measurement card -->
+      <div class="card" style="margin-bottom:14px; border-color:rgba(37,99,235,0.3);">
+        <div style="font-size:13px; font-weight:700; margin-bottom:12px;">📍 מדידת היקפים (ס"מ)</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label class="lbl">חזה</label>
+            <input class="input" id="ms-chest" type="number" step="0.5" inputmode="decimal" placeholder="100">
+          </div>
+          <div>
+            <label class="lbl">מותניים</label>
+            <input class="input" id="ms-waist" type="number" step="0.5" inputmode="decimal" placeholder="85">
+          </div>
+          <div>
+            <label class="lbl">בטן</label>
+            <input class="input" id="ms-belly" type="number" step="0.5" inputmode="decimal" placeholder="90">
+          </div>
+          <div>
+            <label class="lbl">ירך</label>
+            <input class="input" id="ms-thigh" type="number" step="0.5" inputmode="decimal" placeholder="55">
+          </div>
+          <div>
+            <label class="lbl">יד קדמית</label>
+            <input class="input" id="ms-arm" type="number" step="0.5" inputmode="decimal" placeholder="35">
+          </div>
+          <div>
+            <label class="lbl">תאריך</label>
+            <input class="input" id="ms-date" type="date">
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <label class="lbl">הערה (אופציונלי)</label>
+          <input class="input" id="ms-note" placeholder='למשל: "בוקר, על קיבה ריקה"'>
+        </div>
+        <button class="btn btn-w" style="margin-top:12px; background:linear-gradient(135deg,#2563eb,#1d4ed8);" onclick="logMeasurement()">✓ שמור מדידה</button>
+        <div id="ms-msg" style="display:none; margin-top:10px; text-align:center; font-size:13px; font-weight:700;"></div>
+      </div>
+
+      <!-- Latest summary -->
+      <div class="card" style="padding:14px; margin-bottom:14px;">
+        <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:10px;">📊 ערכים נוכחיים ושינוי</div>
+        <div id="ms-summary" style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px;"></div>
+      </div>
+
+      <!-- Measurements log list -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <span style="font-size:14px; font-weight:700; color:var(--muted);">יומן מדידות</span>
+        <button class="btn btn-sm btn-ghost" onclick="if(confirm('למחוק את כל יומן המדידות?')) clearMeasurements()">🗑 נקה</button>
+      </div>
+      <div id="ms-list"></div>
     </div>
   </div>
 
@@ -1198,6 +1260,8 @@ let entries = [];
 let history = [];
 let pantry  = [];
 let weightLog = [];
+let measurements = []; // {id, date, chest, waist, belly, thigh, arm, note}
+let currentMtab = 'weight';
 let currentGender = "male";
 let currentGoal   = "lose";
 let currentRate   = 0.5;
@@ -1239,6 +1303,10 @@ function listenFirebase() {
   db.ref(`${uid}/history`).on('value', snap => { history = snap.val() ? Object.values(snap.val()) : []; });
   db.ref(`${uid}/pantry`).on('value', snap => { pantry = snap.val() ? Object.values(snap.val()) : []; renderQuickAdd(); renderPantryTab(); });
   db.ref(`${uid}/weightLog`).on('value', snap => { weightLog = snap.val() ? Object.values(snap.val()) : []; });
+  db.ref(`${uid}/measurements`).on('value', snap => {
+    measurements = snap.val() ? Object.values(snap.val()) : [];
+    if (document.getElementById('screen-weight')?.classList.contains('active') && currentMtab === 'measure') renderMeasurements();
+  });
 }
 
 async function fbSet(path, val) {
@@ -1703,6 +1771,8 @@ async function init() {
   if (!Array.isArray(pantry)) pantry = Object.values(pantry);
   weightLog = (await fbGet('weightLog')) || [];
   if (!Array.isArray(weightLog)) weightLog = Object.values(weightLog);
+  measurements = (await fbGet('measurements')) || [];
+  if (!Array.isArray(measurements)) measurements = Object.values(measurements);
 
   // Load API key
   ANTHROPIC_KEY = (await fbGet('anthropicKey')) || localStorage.getItem('ct-anthropic-key') || '';
@@ -1774,7 +1844,7 @@ function showScreen(name) {
   if (name==='dashboard') renderDashboard();
   if (name==='history')   renderHistory();
   if (name==='settings')  renderSettings();
-  if (name==='weight')    renderWeight();
+  if (name==='weight')    { renderWeight(); renderMeasurements(); setMtab(currentMtab); }
   if (name==='ai')        { initAiChat(); setTimeout(()=>document.getElementById('ai-input').focus(),200); }
 }
 
@@ -2099,7 +2169,7 @@ function renderPantryTab() {
   if (!pantry.length) { empty.style.display='block'; list.innerHTML=''; return; }
   empty.style.display='none';
   list.innerHTML = pantry.map(item=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--card2);border-radius:12px;border:1px solid var(--border);margin-bottom:8px;">
+    <div data-pantry-id="${item.id}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--card2);border-radius:12px;border:1px solid var(--border);margin-bottom:8px;">
       <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;border:1px solid #fde68a;">
         <div style="font-size:13px;font-weight:800;color:#d97706;line-height:1;">${item.count||1}</div>
         <div style="font-size:9px;color:#b45309;">פעם</div>
@@ -2120,7 +2190,15 @@ async function quickAddFromPantry(id) {
   const macros = (item.prot != null || item.carb != null || item.fat != null)
     ? {prot: item.prot, carb: item.carb, fat: item.fat} : null;
   await addEntry(item.name, item.cal100||0, item.grams, item.calories, 0, macros);
-  closeModal();
+  // Visual feedback — flash the row instead of closing the modal so the user
+  // can keep adding more foods in one go.
+  const row = document.querySelector(`[data-pantry-id="${id}"]`);
+  if (row) {
+    const prevBg = row.style.background;
+    row.style.background = 'var(--accent-light)';
+    row.style.transition = 'background 0.4s';
+    setTimeout(()=>{ row.style.background = prevBg; }, 600);
+  }
 }
 
 // ══════════════════════════════════════════
@@ -3066,8 +3144,8 @@ async function resetApp() {
       await logAudit('manual_reset', { sizeAtReset: _historySize(histVal) });
     }
   } catch(e) { console.warn('pre-reset backup failed', e); }
-  entries=[]; history=[]; pantry=[]; weightLog=[];
-  await fbSet('profile',null); await fbSet('today',null); await fbSet('history',null); await fbSet('pantry',null); await fbSet('weightLog',null);
+  entries=[]; history=[]; pantry=[]; weightLog=[]; measurements=[];
+  await fbSet('profile',null); await fbSet('today',null); await fbSet('history',null); await fbSet('pantry',null); await fbSet('weightLog',null); await fbSet('measurements',null);
   localStorage.clear();
   location.reload();
 }
@@ -3113,7 +3191,7 @@ const AI_SYSTEM = `אתה עוזר תזונה חכם. ענה תמיד בעברי
 \`\`\`
 זה מאפשר למשתמש להוסיף בכפתור אחד. אל תשאל "האם להוסיף?" — הכפתור עושה את זה.
 
-אם בתמונה כמה מאכלים — הוסף בלוק FOOD_CARD נפרד לכל אחד.
+⭐ חוק קריטי: אם המשתמש מזכיר/מצלם **כמה מאכלים יחד** (למשל "אכלתי כריך עם חביתה ותפוז" או תמונה עם כמה פריטים) — חובה לפצל אותם ולהוסיף בלוק FOOD_CARD **נפרד לכל מאכל**, אחד מתחת לשני. אל תאחד אותם לבלוק אחד. כל בלוק יקבל את הכפתורים שלו ועל המשתמש לבחור איזה להוסיף.
 
 אם המשתמש מבקש תמיכה כללית או שאלות תזונתיות (לא חישוב מאכל ספציפי) — אל תוסיף בלוק.
 
@@ -3661,6 +3739,160 @@ async function clearWeightLog() {
   weightLog = [];
   await fbSet('weightLog', []);
   renderWeight();
+}
+
+// ══════════════════════════════════════════
+// BODY MEASUREMENTS TRACKING
+// ══════════════════════════════════════════
+const MEASURE_FIELDS = [
+  {key:'chest', label:'חזה',      emoji:'🧍'},
+  {key:'waist', label:'מותניים',  emoji:'📏'},
+  {key:'belly', label:'בטן',      emoji:'⬭'},
+  {key:'thigh', label:'ירך',      emoji:'🦵'},
+  {key:'arm',   label:'יד קדמית', emoji:'💪'}
+];
+
+function setMtab(name) {
+  currentMtab = name;
+  const wTab = document.getElementById('mtab-weight');
+  const mTab = document.getElementById('mtab-measure');
+  const wContent = document.getElementById('mtab-content-weight');
+  const mContent = document.getElementById('mtab-content-measure');
+  if (!wTab || !mTab || !wContent || !mContent) return;
+  if (name === 'weight') {
+    wTab.classList.add('active-blue');
+    mTab.classList.remove('active-blue');
+    wContent.style.display = '';
+    mContent.style.display = 'none';
+    renderWeight();
+  } else {
+    mTab.classList.add('active-blue');
+    wTab.classList.remove('active-blue');
+    mContent.style.display = '';
+    wContent.style.display = 'none';
+    renderMeasurements();
+  }
+}
+
+function renderMeasurements() {
+  const dateEl = document.getElementById('ms-date');
+  if (dateEl && !dateEl.value) dateEl.value = todayStr();
+
+  const sorted = [...measurements].sort((a,b)=>a.date.localeCompare(b.date));
+  const latest = sorted[sorted.length-1];
+  const first  = sorted[0];
+
+  // Summary grid: latest value + change vs first per field
+  const sumEl = document.getElementById('ms-summary');
+  if (sumEl) {
+    sumEl.innerHTML = MEASURE_FIELDS.map(f => {
+      const cur  = latest?.[f.key];
+      const init = first?.[f.key];
+      const hasCur  = typeof cur === 'number';
+      const hasInit = typeof init === 'number' && sorted.length >= 2;
+      const diff = hasCur && hasInit ? +(cur - init).toFixed(1) : null;
+      const sign = diff > 0 ? '+' : '';
+      const col  = diff < 0 ? 'var(--accent)' : diff > 0 ? 'var(--danger)' : 'var(--muted)';
+      return `<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">${f.emoji} ${f.label}</div>
+        <div style="display:flex;align-items:baseline;gap:6px;">
+          <div style="font-size:18px;font-weight:800;">${hasCur ? cur.toFixed(1) : '–'}</div>
+          <div style="font-size:10px;color:var(--muted);">${hasCur ? 'ס"מ' : ''}</div>
+          ${diff !== null ? `<div style="font-size:11px;font-weight:700;color:${col};margin-right:auto;">${sign}${diff}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // List
+  const listEl = document.getElementById('ms-list');
+  if (!listEl) return;
+  if (!sorted.length) {
+    listEl.innerHTML = `<div style="text-align:center;padding:28px;color:var(--muted);">
+      <div style="font-size:36px;margin-bottom:8px;">📏</div>
+      <div>אין מדידות עדיין — הוסף את הראשונה!</div>
+    </div>`;
+    return;
+  }
+  listEl.innerHTML = [...sorted].reverse().map((e,i,arr)=>{
+    const prev = arr[i+1];
+    const dayStr = new Date(e.date+'T12:00:00').toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
+    const cells = MEASURE_FIELDS.map(f => {
+      const v = e[f.key];
+      if (typeof v !== 'number') return '';
+      const prevV = prev?.[f.key];
+      let diffTxt = '';
+      if (typeof prevV === 'number') {
+        const d = +(v - prevV).toFixed(1);
+        const s = d > 0 ? '+' : '';
+        const col = d < 0 ? 'var(--accent)' : d > 0 ? 'var(--danger)' : 'var(--muted)';
+        if (d !== 0) diffTxt = ` <span style="font-size:10px;font-weight:700;color:${col};">${s}${d}</span>`;
+      }
+      return `<span style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:3px 7px;font-size:11px;font-weight:600;white-space:nowrap;">${f.label}: <strong>${v.toFixed(1)}</strong>${diffTxt}</span>`;
+    }).filter(Boolean).join(' ');
+    return `<div class="card-sm" style="margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div style="width:38px;height:38px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📏</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;">${dayStr}</div>
+          ${e.note ? `<div style="font-size:11px;color:var(--muted);">${e.note}</div>` : ''}
+        </div>
+        <button onclick="deleteMeasurement('${e.id}')" style="background:var(--card2);border:1px solid var(--border);border-radius:8px;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:12px;flex-shrink:0;">✕</button>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;">${cells || '<span style="color:var(--muted);font-size:11px;">אין ערכים</span>'}</div>
+    </div>`;
+  }).join('');
+}
+
+function _readMeasureField(id) {
+  const v = parseFloat(document.getElementById(id).value);
+  return (!isNaN(v) && v > 0 && v < 300) ? +v.toFixed(1) : null;
+}
+
+async function logMeasurement() {
+  const date  = document.getElementById('ms-date').value || todayStr();
+  const note  = document.getElementById('ms-note').value.trim();
+  const rec = { id: uid(), date, note };
+  let anyFilled = false;
+  MEASURE_FIELDS.forEach(f => {
+    const v = _readMeasureField('ms-'+f.key);
+    if (v !== null) { rec[f.key] = v; anyFilled = true; }
+  });
+  const msg = document.getElementById('ms-msg');
+  if (!anyFilled) {
+    msg.style.display='block'; msg.style.color='var(--danger)';
+    msg.textContent='⚠️ הזן לפחות מדידה אחת';
+    setTimeout(()=>msg.style.display='none',2500);
+    return;
+  }
+  // Replace if same date exists (merge new values over existing)
+  const existingIdx = measurements.findIndex(m => m.date === date);
+  if (existingIdx >= 0) {
+    rec.id = measurements[existingIdx].id;
+    measurements[existingIdx] = { ...measurements[existingIdx], ...rec };
+  } else {
+    measurements.push(rec);
+  }
+  measurements.sort((a,b)=>a.date.localeCompare(b.date));
+  await fbSet('measurements', measurements);
+  MEASURE_FIELDS.forEach(f => document.getElementById('ms-'+f.key).value = '');
+  document.getElementById('ms-note').value = '';
+  msg.style.display='block'; msg.style.color='var(--accent)';
+  msg.textContent='✅ המדידה נשמרה!';
+  setTimeout(()=>msg.style.display='none',2500);
+  renderMeasurements();
+}
+
+async function deleteMeasurement(id) {
+  measurements = measurements.filter(e=>e.id!==id);
+  await fbSet('measurements', measurements);
+  renderMeasurements();
+}
+
+async function clearMeasurements() {
+  measurements = [];
+  await fbSet('measurements', []);
+  renderMeasurements();
 }
 
 // ══════════════════════════════════════════
