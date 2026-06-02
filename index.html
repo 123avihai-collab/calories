@@ -646,10 +646,6 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
             <input class="input" id="ms-chest" type="number" step="0.5" inputmode="decimal" placeholder="100">
           </div>
           <div>
-            <label class="lbl">מותניים</label>
-            <input class="input" id="ms-waist" type="number" step="0.5" inputmode="decimal" placeholder="85">
-          </div>
-          <div>
             <label class="lbl">בטן</label>
             <input class="input" id="ms-belly" type="number" step="0.5" inputmode="decimal" placeholder="90">
           </div>
@@ -1260,7 +1256,7 @@ let entries = [];
 let history = [];
 let pantry  = [];
 let weightLog = [];
-let measurements = []; // {id, date, chest, waist, belly, thigh, arm, note}
+let measurements = []; // {id, date, chest, belly, thigh, arm, note}
 let currentMtab = 'weight';
 let currentGender = "male";
 let currentGoal   = "lose";
@@ -3206,13 +3202,13 @@ const AI_SYSTEM = `אתה עוזר תזונה חכם. ענה תמיד בעברי
 {"weight":78.3,"note":"הערה אופציונלית"}
 \`\`\`
 
-אם המשתמש מדווח על **היקפי גוף** (חזה/מותניים/בטן/ירך/יד קדמית, כולם בס"מ) — הוסף בלוק LOG_MEASURE. הוסף רק את השדות שהמשתמש ציין. שמות השדות: chest, waist, belly, thigh, arm.
+אם המשתמש מדווח על **היקפי גוף** (חזה/בטן/ירך/יד קדמית, כולם בס"מ) — הוסף בלוק LOG_MEASURE. הוסף רק את השדות שהמשתמש ציין. שמות השדות: chest, belly, thigh, arm.
 \`\`\`LOG_MEASURE
-{"chest":100,"waist":85,"belly":90,"thigh":55,"arm":35,"note":"הערה אופציונלית"}
+{"chest":100,"belly":90,"thigh":55,"arm":35,"note":"הערה אופציונלית"}
 \`\`\`
 
 חוקים לבלוקים האלה:
-- הוצא בלוק רק כשהמשתמש בפועל מדווח על מדידה שלו ("שקלתי", "המותניים שלי", "המדידה היום"). **אל תוציא** בלוק עבור שאלות תאורטיות, יעדים, או דיון כללי.
+- הוצא בלוק רק כשהמשתמש בפועל מדווח על מדידה שלו ("שקלתי", "הבטן שלי", "המדידה היום"). **אל תוציא** בלוק עבור שאלות תאורטיות, יעדים, או דיון כללי.
 - אם המשתמש ציין תאריך מפורש (אתמול, בשבוע שעבר 25/5) — הוסף שדה \`date\` בפורמט YYYY-MM-DD. אחרת השמט אותו (יישמר תחת היום).
 - אל תכלול בבלוק שדות שהמשתמש לא ציין במפורש.
 - ציין בטקסט החופשי מה בדיוק שמרת, כדי שהמשתמש יוכל לוודא.`;
@@ -3234,7 +3230,7 @@ function initAiChat() {
     שאל אותי על קלוריות בכל מאכל — אני יודע הכל 😄<br>
     📷 או <strong>צרף תמונה של מאכל/אריזה</strong> ואני אזהה ואחשב את הערכים.<br><br>
     ⚖️ אפשר גם להגיד לי <em>"שקלתי 78.5"</em> ואשמור לך את השקילה.<br>
-    📏 או <em>"מותניים 85, חזה 100"</em> ואשמור מדידה.<br><br>
+    📏 או <em>"בטן 90, חזה 100"</em> ואשמור מדידה.<br><br>
     אוכל גם <strong>להוסיף ישירות לרשימה</strong> אחרי שמחשבים.</div>`;
   c.appendChild(w);
 }
@@ -3850,7 +3846,6 @@ async function clearWeightLog() {
 // ══════════════════════════════════════════
 const MEASURE_FIELDS = [
   {key:'chest', label:'חזה',      emoji:'🧍'},
-  {key:'waist', label:'מותניים',  emoji:'📏'},
   {key:'belly', label:'בטן',      emoji:'⬭'},
   {key:'thigh', label:'ירך',      emoji:'🦵'},
   {key:'arm',   label:'יד קדמית', emoji:'💪'}
