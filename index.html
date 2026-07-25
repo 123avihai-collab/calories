@@ -169,6 +169,9 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
   width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto;
   border: 1px solid var(--border); padding: 24px 20px 36px;
   box-shadow: 0 -8px 40px rgba(30,60,120,0.15); }
+/* Sticky modal header — stays visible while scrolling long lists (e.g. pantry) */
+.modal-sticky-head { position: sticky; top: -24px; z-index: 5; background: var(--card);
+  margin: -24px -20px 18px; padding: 20px 20px 12px; border-bottom: 1px solid var(--border); }
 
 /* FAB */
 .fab { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
@@ -203,9 +206,9 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 #ring-filled { transition: stroke-dashoffset 0.7s cubic-bezier(.4,0,.2,1), stroke 0.3s; }
 
 /* Quick add strip — fixed 3 items, no scroll */
-.quick-strip { display: flex; gap: 8px; overflow: hidden; padding-bottom: 4px; flex-wrap: nowrap; }
-.quick-strip .chip { flex: 1 1 0; min-width: 0; }
-.quick-strip .chip-more { flex: 0 0 auto; }
+.quick-strip { display: flex; gap: 8px; overflow: hidden; padding-bottom: 4px; flex-wrap: wrap; }
+.quick-strip .chip { flex: 1 1 44%; min-width: 0; justify-content: space-between; padding: 8px 12px; }
+.quick-strip .chip-more { flex: 1 1 100%; justify-content: center; }
 
 /* Bottom nav */
 .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 60;
@@ -357,40 +360,62 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
     <!-- Macros card -->
     <div style="padding:12px 20px 0;">
       <div class="card" style="padding:16px;">
-        <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:14px;">🧬 מאקרו-נוטריינטים היום</div>
-        <div style="display:flex; gap:10px;">
-          <!-- Protein -->
-          <div style="flex:1;">
-            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;">
-              <span style="font-size:11px; font-weight:700; color:#3b82f6;">💪 חלבון</span>
-              <span style="font-size:14px; font-weight:800; color:#3b82f6;" id="macro-prot-val">0ג׳</span>
-            </div>
-            <div class="progress-track">
-              <div class="progress-bar" id="macro-prot-bar" style="width:0%; background:linear-gradient(90deg,#3b82f6,#60a5fa);"></div>
-            </div>
-            <div style="font-size:10px; color:var(--dim); margin-top:3px;" id="macro-prot-sub">מתוך ~0ג׳</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <span style="font-size:14px; font-weight:800;">🍎 ערכים תזונתיים היום</span>
+          <span style="font-size:10px; color:var(--muted);">חלבון · פחמימות · שומן</span>
+        </div>
+
+        <!-- Protein row -->
+        <div style="margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;">
+            <span style="font-size:13px; font-weight:700; color:#3b82f6;">💪 חלבון</span>
+            <span style="font-size:13px; color:var(--text);">
+              <strong id="macro-prot-val" style="color:#3b82f6; font-size:16px;">0</strong>
+              <span style="color:var(--muted);"> / <span id="macro-prot-tar">0</span> ג׳</span>
+            </span>
           </div>
-          <!-- Carbs -->
-          <div style="flex:1;">
-            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;">
-              <span style="font-size:11px; font-weight:700; color:#f59e0b;">🌾 פחמימות</span>
-              <span style="font-size:14px; font-weight:800; color:#f59e0b;" id="macro-carb-val">0ג׳</span>
-            </div>
-            <div class="progress-track">
-              <div class="progress-bar" id="macro-carb-bar" style="width:0%; background:linear-gradient(90deg,#f59e0b,#fcd34d);"></div>
-            </div>
-            <div style="font-size:10px; color:var(--dim); margin-top:3px;" id="macro-carb-sub">מתוך ~0ג׳</div>
+          <div class="progress-track">
+            <div class="progress-bar" id="macro-prot-bar" style="width:0%; background:linear-gradient(90deg,#3b82f6,#60a5fa);"></div>
           </div>
-          <!-- Fat -->
-          <div style="flex:1;">
-            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;">
-              <span style="font-size:11px; font-weight:700; color:#ec4899;">🥑 שומן</span>
-              <span style="font-size:14px; font-weight:800; color:#ec4899;" id="macro-fat-val">0ג׳</span>
-            </div>
-            <div class="progress-track">
-              <div class="progress-bar" id="macro-fat-bar" style="width:0%; background:linear-gradient(90deg,#ec4899,#f9a8d4);"></div>
-            </div>
-            <div style="font-size:10px; color:var(--dim); margin-top:3px;" id="macro-fat-sub">מתוך ~0ג׳</div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--dim); margin-top:3px;">
+            <span id="macro-prot-pct">0%</span>
+            <span id="macro-prot-left">–</span>
+          </div>
+        </div>
+
+        <!-- Carbs row -->
+        <div style="margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;">
+            <span style="font-size:13px; font-weight:700; color:#f59e0b;">🌾 פחמימות</span>
+            <span style="font-size:13px; color:var(--text);">
+              <strong id="macro-carb-val" style="color:#f59e0b; font-size:16px;">0</strong>
+              <span style="color:var(--muted);"> / <span id="macro-carb-tar">0</span> ג׳</span>
+            </span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-bar" id="macro-carb-bar" style="width:0%; background:linear-gradient(90deg,#f59e0b,#fcd34d);"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--dim); margin-top:3px;">
+            <span id="macro-carb-pct">0%</span>
+            <span id="macro-carb-left">–</span>
+          </div>
+        </div>
+
+        <!-- Fat row -->
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;">
+            <span style="font-size:13px; font-weight:700; color:#ec4899;">🥑 שומן</span>
+            <span style="font-size:13px; color:var(--text);">
+              <strong id="macro-fat-val" style="color:#ec4899; font-size:16px;">0</strong>
+              <span style="color:var(--muted);"> / <span id="macro-fat-tar">0</span> ג׳</span>
+            </span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-bar" id="macro-fat-bar" style="width:0%; background:linear-gradient(90deg,#ec4899,#f9a8d4);"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--dim); margin-top:3px;">
+            <span id="macro-fat-pct">0%</span>
+            <span id="macro-fat-left">–</span>
           </div>
         </div>
       </div>
@@ -536,6 +561,52 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
         </div>
         <button class="btn btn-w" onclick="saveSettings()">שמור שינויים</button>
       </div>
+
+      <!-- 🎯 Weight goal card -->
+      <div class="card" style="margin-bottom:14px; border-color:rgba(37,99,235,0.3);">
+        <div style="font-size:14px; font-weight:700; margin-bottom:10px;">🎯 יעד משקל</div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">אחד משני השדות מספיק — קצב שבועי (למעלה) או משקל יעד + תאריך.</div>
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+          <div style="flex:1;">
+            <label class="lbl">משקל יעד (ק"ג)</label>
+            <input class="input" id="set-target-weight" type="number" step="0.1" inputmode="decimal" placeholder="75">
+          </div>
+          <div style="flex:1;">
+            <label class="lbl">תאריך יעד (אופציונלי)</label>
+            <input class="input" id="set-target-date" type="date">
+          </div>
+        </div>
+        <div id="set-goal-hint" style="font-size:12px; color:var(--muted); background:var(--card2); padding:8px 12px; border-radius:8px; margin-top:6px;">–</div>
+        <button class="btn btn-sm btn-w" style="margin-top:10px; background:linear-gradient(135deg,#2563eb,#1d4ed8);" onclick="saveWeightGoal()">💾 שמור יעד משקל</button>
+      </div>
+
+      <!-- 🍎 Macro targets card -->
+      <div class="card" style="margin-bottom:14px; border-color:rgba(236,72,153,0.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div style="font-size:14px; font-weight:700;">🍎 יעדי מאקרו יומיים</div>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); cursor:pointer;">
+            <input type="checkbox" id="set-macro-auto" onchange="toggleMacroMode()" style="width:15px; height:15px;">
+            אוטומטי
+          </label>
+        </div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">כשמסומן "אוטומטי" — נחשב עבורך לפי המטרה שלך. אחרת ניתן לערוך ידנית בגרמים.</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+          <div>
+            <label class="lbl" style="color:#3b82f6;">💪 חלבון (ג׳)</label>
+            <input class="input" id="set-macro-prot" type="number" inputmode="numeric" oninput="onMacroInput()">
+          </div>
+          <div>
+            <label class="lbl" style="color:#f59e0b;">🌾 פחמימות (ג׳)</label>
+            <input class="input" id="set-macro-carb" type="number" inputmode="numeric" oninput="onMacroInput()">
+          </div>
+          <div>
+            <label class="lbl" style="color:#ec4899;">🥑 שומן (ג׳)</label>
+            <input class="input" id="set-macro-fat" type="number" inputmode="numeric" oninput="onMacroInput()">
+          </div>
+        </div>
+        <div id="set-macro-hint" style="font-size:11px; color:var(--muted); margin-top:8px; text-align:center;">–</div>
+        <button class="btn btn-sm btn-w" style="margin-top:10px; background:linear-gradient(135deg,#ec4899,#be185d);" onclick="saveMacroTargets()">💾 שמור יעדי מאקרו</button>
+      </div>
       <!-- Firebase setup -->
       <div class="card" style="margin-bottom:14px; border-color:rgba(37,99,235,0.3);">
         <div style="font-size:14px; font-weight:700; margin-bottom:8px;">🔥 סנכרון בין מכשירים (Firebase)</div>
@@ -620,10 +691,11 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
           </div>
           <svg id="wt-svg" style="display:none; overflow:visible;" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
-        <div style="display:flex; justify-content:center; gap:16px; margin-top:10px; font-size:11px; color:var(--muted);" id="wt-legend" style="display:none;">
-          <span>● <span style="color:var(--accent);">משקל בפועל</span></span>
-          <span>- - <span style="color:var(--dim);">יעד</span></span>
+        <div style="display:flex; justify-content:center; gap:18px; margin-top:12px; font-size:11px; color:var(--muted);" id="wt-legend" style="display:none;">
+          <span>● <span style="color:var(--accent); font-weight:700;">משקל בפועל</span></span>
+          <span>- - <span style="color:#2563eb; font-weight:700;">משקל יעד</span></span>
         </div>
+        <div id="wt-goal-status" style="display:none; margin-top:12px; padding:10px 12px; border-radius:10px; background:#eff6ff; border:1px solid #bfdbfe; font-size:12px; color:#1e40af; text-align:center;"></div>
       </div>
 
       <!-- Weight log list -->
@@ -756,7 +828,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 ════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-add">
   <div class="modal-box">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+    <div class="modal-sticky-head" style="display:flex; justify-content:space-between; align-items:center;">
       <h3 style="font-size:18px; font-weight:700;" id="modal-title">הוסף מאכל</h3>
       <button onclick="closeModal()" style="background:var(--card2); border:1px solid var(--border); border-radius:10px; width:32px; height:32px; cursor:pointer; font-size:16px;">✕</button>
     </div>
@@ -1699,6 +1771,37 @@ function calcTarget(p) {
   if(p.goal==='gain') return t+500;
   return t;
 }
+
+// ⭐ Recommend macro targets in grams based on calorie target + goal.
+// Split guidelines: lose→40/30/30 (higher protein), maintain→30/40/30,
+// gain→25/50/25. Protein and carbs are 4 kcal/g, fat 9 kcal/g.
+function calcMacroTargets(p) {
+  const cal = p.targetCalories || calcTarget(p);
+  let pPct, cPct, fPct;
+  if (p.goal === 'lose')      { pPct=0.40; cPct=0.30; fPct=0.30; }
+  else if (p.goal === 'gain') { pPct=0.25; cPct=0.50; fPct=0.25; }
+  else                        { pPct=0.30; cPct=0.40; fPct=0.30; }
+  return {
+    prot: Math.round((cal * pPct) / 4),
+    carb: Math.round((cal * cPct) / 4),
+    fat:  Math.round((cal * fPct) / 9)
+  };
+}
+
+// Returns the macro targets to display/use: manual override if set, else auto.
+function getMacroTargets(p) {
+  p = p || profile;
+  if (!p) return {prot:0, carb:0, fat:0};
+  if (p.macroMode === 'manual' && p.macroTargets) {
+    const m = p.macroTargets;
+    return {
+      prot: Math.max(0, +m.prot || 0),
+      carb: Math.max(0, +m.carb || 0),
+      fat:  Math.max(0, +m.fat  || 0)
+    };
+  }
+  return calcMacroTargets(p);
+}
 function heDay(s) { return new Date(s+'T12:00:00').toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'}); }
 function shortDay(s) { return new Date(s+'T12:00:00').toLocaleDateString('he-IL',{weekday:'short'}); }
 
@@ -1913,21 +2016,20 @@ function renderDashboard() {
     totCarb += m.carb;
     totFat  += m.fat;
   });
-  const targProt = Math.round((target*0.25)/4);
-  const targCarb = Math.round((target*0.45)/4);
-  const targFat  = Math.round((target*0.30)/9);
-  const pctP = Math.min(Math.round(totProt/targProt*100),100)||0;
-  const pctC = Math.min(Math.round(totCarb/targCarb*100),100)||0;
-  const pctF = Math.min(Math.round(totFat/targFat*100),100)||0;
-  document.getElementById('macro-prot-val').textContent = totProt+'ג׳';
-  document.getElementById('macro-carb-val').textContent = totCarb+'ג׳';
-  document.getElementById('macro-fat-val').textContent  = totFat+'ג׳';
-  document.getElementById('macro-prot-sub').textContent = `מתוך ~${targProt}ג׳`;
-  document.getElementById('macro-carb-sub').textContent = `מתוך ~${targCarb}ג׳`;
-  document.getElementById('macro-fat-sub').textContent  = `מתוך ~${targFat}ג׳`;
-  document.getElementById('macro-prot-bar').style.width = pctP+'%';
-  document.getElementById('macro-carb-bar').style.width = pctC+'%';
-  document.getElementById('macro-fat-bar').style.width  = pctF+'%';
+  const {prot: targProt, carb: targCarb, fat: targFat} = getMacroTargets(profile);
+  const setMacro = (key, actual, tgt) => {
+    const pct = tgt ? Math.round(actual/tgt*100) : 0;
+    const barPct = Math.min(pct, 100);
+    const left = Math.max(0, tgt - actual);
+    document.getElementById('macro-'+key+'-val').textContent = actual;
+    document.getElementById('macro-'+key+'-tar').textContent = tgt;
+    document.getElementById('macro-'+key+'-bar').style.width = barPct + '%';
+    document.getElementById('macro-'+key+'-pct').textContent = pct + '%';
+    document.getElementById('macro-'+key+'-left').textContent = actual >= tgt ? '✅ הושלם' : `נותרו ${left}ג׳`;
+  };
+  setMacro('prot', totProt, targProt);
+  setMacro('carb', totCarb, targCarb);
+  setMacro('fat',  totFat,  targFat);
 }
 
 function renderFoodList() {
@@ -1976,20 +2078,21 @@ function renderQuickAdd() {
   let html = top.map(item => {
     const c = item.count || 1;
     const badge = c >= 2
-      ? `<span style="font-size:9px;color:#fff;background:linear-gradient(135deg,var(--accent),#15803d);border-radius:8px;padding:2px 6px;font-weight:800;line-height:1;">×${c}</span>`
+      ? `<span style="font-size:9px;color:#fff;background:linear-gradient(135deg,var(--accent),#15803d);border-radius:8px;padding:2px 6px;font-weight:800;line-height:1;flex-shrink:0;">×${c}</span>`
       : '';
     return `<button class="chip" onclick="quickAdd('${item.id}')" id="chip-${item.id}">
-      ${badge}
-      <span style="font-size:13px;font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;">${item.name}</span>
-      <span style="font-size:10px;color:var(--muted);">${item.calories}קל׳</span>
+      <span style="display:flex;align-items:center;gap:5px;min-width:0;">
+        ${badge}
+        <span style="font-size:13px;font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.name}</span>
+      </span>
+      <span style="font-size:11px;color:var(--accent);font-weight:800;flex-shrink:0;">${item.calories} קל׳</span>
     </button>`;
   }).join('');
 
-  // "+N עוד" button — opens add modal at pantry tab
+  // "Full pantry" button — opens add modal at the categorized pantry tab
   if (rest > 0) {
-    html += `<button class="chip chip-more" onclick="openAddModal(); setTab('pantry');" style="background:linear-gradient(135deg,#dbeafe,#bfdbfe); border-color:#93c5fd;" title="הצג את כל הפנקס">
-      <span style="font-size:11px; color:#1e40af; font-weight:800;">+${rest} עוד</span>
-      <span style="font-size:10px; color:#3b82f6;">פנקס מלא</span>
+    html += `<button class="chip chip-more" onclick="openAddModal(); setTab('pantry');" style="background:linear-gradient(135deg,#dbeafe,#bfdbfe); border-color:#93c5fd;" title="הצג את כל המחסן">
+      <span style="font-size:12px; color:#1e40af; font-weight:800;">📦 כל המחסן (עוד ${rest})</span>
     </button>`;
   }
 
@@ -2158,13 +2261,46 @@ async function removeFromPantry(id) {
   renderQuickAdd();
 }
 
+// ── Pantry categories — computed from the item name at render time.
+// Nothing is written to storage, so existing pantry data is untouched.
+const PANTRY_CATEGORIES = [
+  {key:'bread',   label:'🍞 לחמים ומאפים',    words:['לחם','פיתה','לחמניה','לחמנייה','בגט','טורטיה','טוסט','קרואסון','מאפה','חלה','בורקס','ג\'חנון','מלאווח','פוקצ','בייגל','כריך','פריכיות','קרקר']},
+  {key:'dairy',   label:'🧀 גבינות ומעדנים',  words:['גבינה','גבינת','קוטג','יוגורט','מעדן','שמנת','חלב','לבן ','לאבנה','לבנה','מוצרלה','צהובה','בולגרית','פטה','ריקוטה','משקה חלב','פודינג','גלידה','דנונה','מילקי','אקטימל','פרו ','סקייר']},
+  {key:'meat',    label:'🍗 בשר ודגים',        words:['עוף','חזה','בשר','סטייק','קציצ','שניצל','נקניק','המבורגר','הודו','כבד','טונה','סלמון','דג','פסטרמה','קבב','שווארמה','שוורמה','אנטריקוט','פרגית','כנפיים','לבבות']},
+  {key:'egg',     label:'🥚 ביצים',            words:['ביצה','ביצים','חביתה','אומלט','שקשוקה']},
+  {key:'veg',     label:'🥗 ירקות וסלטים',     words:['סלט','ירקות','עגבני','מלפפון','גזר','פלפל','חסה','כרוב','בצל','קישוא','חציל','ברוקולי','תרד','אפונה','שעועית ירוקה','טחינה','חומוס','מטבוחה']},
+  {key:'fruit',   label:'🍎 פירות',            words:['תפוח','בננה','תפוז','אבטיח','מלון','ענבים','אגס','אפרסק','שזיף','מנגו','קיווי','תות','אננס','רימון','תמר','משמש','נקטרינה','קלמנטינה','פומלה','אשכולית','פרי']},
+  {key:'carbs',   label:'🍚 פחמימות ותוספות',  words:['אורז','פסטה','תפוח אדמה','תפו"א','פירה','קוסקוס','בורגול','קינואה','שעועית','עדש','גריסים','פתיתים','נודלס','אטריות','בטטה','תירס','דגני','קורנפלקס','גרנולה','שיבולת','דייסה','קוואקר']},
+  {key:'alcohol', label:'🍺 אלכוהול',          words:['בירה','יין','וודקה','ויסקי','בירת','שיכר','קוקטייל','ערק','ליקר','שמפניה','סיידר']},
+  {key:'drinks',  label:'🥤 שתייה',            words:['קולה','מיץ','סודה','משקה','קפה','תה ','לימונדה','אנרגיה','ספרייט','פאנטה','שוקו','אספרסו','קפוצ']},
+  {key:'snacks',  label:'🍫 חטיפים ומתוקים',   words:['שוקולד','במבה','ביסלי','חטיף','עוגה','עוגי','גלידה','ממתק','סוכרי','וופל','קרמבו','צ\'יפס','פופקורן','בוטנים','אגוזים','שקדים','גרעינים','חלבה','עוגת','דובונים','מנטוס','מסטיק','קינדר','פררו','טורטית']},
+];
+function pantryCategoryOf(item) {
+  const name = (item?.name || '').toLowerCase();
+  for (const cat of PANTRY_CATEGORIES) {
+    if (cat.words.some(w => name.includes(w.toLowerCase()))) return cat;
+  }
+  return {key:'other', label:'📦 שונות'};
+}
+
 function renderPantryTab() {
   const list = document.getElementById('pantry-list');
   const empty = document.getElementById('pantry-empty');
   if (!Array.isArray(pantry)) pantry = pantry ? Object.values(pantry).filter(Boolean) : [];
   if (!pantry.length) { empty.style.display='block'; list.innerHTML=''; return; }
   empty.style.display='none';
-  list.innerHTML = pantry.map(item=>`
+
+  // Group by category, preserving usage-order within each group
+  const groups = new Map();
+  pantry.forEach(item => {
+    const cat = pantryCategoryOf(item);
+    if (!groups.has(cat.key)) groups.set(cat.key, {label: cat.label, items: []});
+    groups.get(cat.key).items.push(item);
+  });
+  // Order: categories as defined, then "other" last
+  const ordered = [...PANTRY_CATEGORIES.map(c=>c.key), 'other'].filter(k => groups.has(k));
+
+  const rowHtml = item => `
     <div data-pantry-id="${item.id}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--card2);border-radius:12px;border:1px solid var(--border);margin-bottom:8px;">
       <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;border:1px solid #fde68a;">
         <div style="font-size:13px;font-weight:800;color:#d97706;line-height:1;">${item.count||1}</div>
@@ -2177,7 +2313,20 @@ function renderPantryTab() {
       <div style="font-size:14px;font-weight:800;color:var(--accent);background:var(--accent-light);border-radius:8px;padding:4px 8px;flex-shrink:0;">${item.calories}<span style="font-size:9px;"> קל׳</span></div>
       <button onclick="quickAddFromPantry('${item.id}')" style="background:linear-gradient(135deg,var(--accent),#15803d);border:none;border-radius:9px;width:34px;height:34px;cursor:pointer;color:#fff;font-size:18px;font-weight:700;flex-shrink:0;box-shadow:0 3px 8px rgba(22,163,74,0.3);">+</button>
       <button onclick="removeFromPantry('${item.id}')" style="background:var(--card);border:1px solid var(--border);border-radius:9px;width:34px;height:34px;cursor:pointer;color:var(--muted);font-size:13px;flex-shrink:0;">✕</button>
-    </div>`).join('');
+    </div>`;
+
+  list.innerHTML = ordered.map(key => {
+    const g = groups.get(key);
+    return `
+    <div style="margin-bottom:6px;">
+      <div style="display:flex;align-items:center;gap:8px;margin:12px 2px 8px;">
+        <span style="font-size:13px;font-weight:800;color:var(--text);">${g.label}</span>
+        <span style="font-size:10px;color:var(--muted);background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:1px 7px;font-weight:700;">${g.items.length}</span>
+        <div style="flex:1;height:1px;background:var(--border);"></div>
+      </div>
+      ${g.items.map(rowHtml).join('')}
+    </div>`;
+  }).join('');
 }
 
 async function quickAddFromPantry(id) {
@@ -2205,9 +2354,16 @@ function openAddModal(forDate) {
   openModal('add');
 }
 
+// Mobile back-button support: opening a modal pushes a history entry, so
+// pressing "back" closes the modal instead of leaving the app.
+let _modalHistoryPushed = false;
+
 function openModal(which) {
   document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));
   document.getElementById('modal-'+which).classList.add('open');
+  if (!_modalHistoryPushed) {
+    try { history.pushState({ctModal:true}, ''); _modalHistoryPushed = true; } catch {}
+  }
   if (which==='add') {
     setTab(pantry.length>0?'pantry':'text');
     // Title reflects target date
@@ -2228,11 +2384,27 @@ function openModal(which) {
     document.getElementById('manual-entry').style.display='none';
   }
 }
-function closeModal() {
+
+function _doCloseModal() {
   document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));
   stopScan();
   _addToDate = null; // always reset target date when modal closes
 }
+
+function closeModal() {
+  _doCloseModal();
+  if (_modalHistoryPushed) {
+    _modalHistoryPushed = false;
+    try { history.back(); } catch {}
+  }
+}
+
+window.addEventListener('popstate', () => {
+  if (_modalHistoryPushed) {
+    _modalHistoryPushed = false;
+    _doCloseModal();
+  }
+});
 
 // ══════════════════════════════════════════
 // TABS
@@ -3053,9 +3225,128 @@ function renderSettings() {
   // attach listeners once
   ['set-age','set-height','set-weight'].forEach(id=>{
     const el=document.getElementById(id);
-    el.oninput=updateSetPreview;
+    el.oninput=()=>{ updateSetPreview(); updateWeightGoalHint(); updateMacroDisplay(); };
   });
-  document.getElementById('set-activity').onchange=updateSetPreview;
+  document.getElementById('set-activity').onchange=()=>{ updateSetPreview(); updateMacroDisplay(); };
+
+  // 🎯 Weight goal
+  document.getElementById('set-target-weight').value = profile.targetWeight || '';
+  document.getElementById('set-target-date').value   = profile.targetDate   || '';
+  ['set-target-weight','set-target-date'].forEach(id=>{
+    document.getElementById(id).oninput = updateWeightGoalHint;
+  });
+  updateWeightGoalHint();
+
+  // 🍎 Macro targets
+  const mode = profile.macroMode || 'auto';
+  document.getElementById('set-macro-auto').checked = (mode === 'auto');
+  updateMacroDisplay();
+}
+
+// Update the weight-goal helper line: ETA at current rate, or required rate to hit target date
+function updateWeightGoalHint() {
+  const hint = document.getElementById('set-goal-hint');
+  if (!hint || !profile) return;
+  const tw = parseFloat(document.getElementById('set-target-weight').value);
+  const td = document.getElementById('set-target-date').value;
+  const curW = parseFloat(document.getElementById('set-weight').value) || profile.weight;
+  if (!tw || !curW) { hint.textContent = 'הזן משקל יעד כדי לראות תחזית.'; return; }
+  const diff = curW - tw;
+  if (Math.abs(diff) < 0.1) { hint.textContent = '🎯 אתה בדיוק ביעד!'; return; }
+  const dir = diff > 0 ? 'ירידה' : 'עלייה';
+  const kgLeft = Math.abs(diff).toFixed(1);
+
+  if (td) {
+    // User set a target date — compute required weekly rate
+    const days = Math.max(1, Math.round((new Date(td+'T12:00:00') - new Date()) / 86400000));
+    const weeks = Math.max(0.1, days / 7);
+    const needed = Math.abs(diff) / weeks;
+    hint.innerHTML = `נדרשים <strong>${kgLeft} ק"ג</strong> של ${dir} עד ${new Date(td+'T12:00:00').toLocaleDateString('he-IL')} — כלומר <strong>${needed.toFixed(2)} ק"ג/שבוע</strong> (${days} ימים).`;
+  } else {
+    // No target date — estimate ETA at current lose rate
+    const rate = (LOSS_RATES.find(r => r.val === setCurrentRate) || LOSS_RATES[1]).val || 0.5;
+    const weeks = Math.ceil(Math.abs(diff) / rate);
+    const eta = new Date(Date.now() + weeks*7*86400000);
+    hint.innerHTML = `בקצב הנוכחי (${rate} ק"ג/שבוע) — <strong>~${weeks} שבועות</strong> של ${dir} של ${kgLeft} ק"ג · תגיע ב-${eta.toLocaleDateString('he-IL')}.`;
+  }
+}
+
+async function saveWeightGoal() {
+  if (!profile) return;
+  const tw = parseFloat(document.getElementById('set-target-weight').value);
+  const td = document.getElementById('set-target-date').value;
+  profile.targetWeight = (tw && tw > 20 && tw < 300) ? +tw.toFixed(1) : null;
+  profile.targetDate   = td || null;
+  await fbSet('profile', profile);
+  alert('✅ יעד המשקל נשמר');
+  if (document.getElementById('screen-weight')?.classList.contains('active')) renderWeight();
+}
+
+// Fill the three macro inputs from either auto-calc or stored manual values
+function updateMacroDisplay() {
+  if (!profile) return;
+  const auto = document.getElementById('set-macro-auto').checked;
+  const hint = document.getElementById('set-macro-hint');
+  // Build a "live" profile using current form values so preview is accurate
+  const live = {
+    ...profile,
+    age: +document.getElementById('set-age').value || profile.age,
+    height: +document.getElementById('set-height').value || profile.height,
+    weight: +document.getElementById('set-weight').value || profile.weight,
+    activityLevel: document.getElementById('set-activity').value,
+    goal: setCurrentGoal, lossRate: setCurrentRate
+  };
+  live.targetCalories = calcTarget(live);
+  const auto_t = calcMacroTargets(live);
+
+  let show;
+  if (auto) {
+    show = auto_t;
+    ['set-macro-prot','set-macro-carb','set-macro-fat'].forEach(id => {
+      document.getElementById(id).disabled = true;
+      document.getElementById(id).style.opacity = 0.7;
+    });
+  } else {
+    show = profile.macroTargets || auto_t;
+    ['set-macro-prot','set-macro-carb','set-macro-fat'].forEach(id => {
+      document.getElementById(id).disabled = false;
+      document.getElementById(id).style.opacity = 1;
+    });
+  }
+  document.getElementById('set-macro-prot').value = show.prot;
+  document.getElementById('set-macro-carb').value = show.carb;
+  document.getElementById('set-macro-fat').value  = show.fat;
+  const totalCal = show.prot*4 + show.carb*4 + show.fat*9;
+  hint.textContent = `≈ ${totalCal} קל׳ (מתוך יעד ${live.targetCalories})`;
+}
+
+function toggleMacroMode() { updateMacroDisplay(); }
+function onMacroInput() {
+  // Live-update kcal hint while editing
+  const p = +document.getElementById('set-macro-prot').value || 0;
+  const c = +document.getElementById('set-macro-carb').value || 0;
+  const f = +document.getElementById('set-macro-fat').value  || 0;
+  const cal = p*4 + c*4 + f*9;
+  document.getElementById('set-macro-hint').textContent = `≈ ${cal} קל׳ (מתוך יעד ${profile?.targetCalories || calcTarget({...profile})})`;
+}
+
+async function saveMacroTargets() {
+  if (!profile) return;
+  const auto = document.getElementById('set-macro-auto').checked;
+  if (auto) {
+    profile.macroMode = 'auto';
+    profile.macroTargets = null;
+  } else {
+    const p = +document.getElementById('set-macro-prot').value;
+    const c = +document.getElementById('set-macro-carb').value;
+    const f = +document.getElementById('set-macro-fat').value;
+    if (![p,c,f].every(v => v >= 0 && v < 1000)) { alert('ערכי מאקרו לא תקינים (0–999).'); return; }
+    profile.macroMode = 'manual';
+    profile.macroTargets = { prot: p, carb: c, fat: f };
+  }
+  await fbSet('profile', profile);
+  alert('✅ יעדי המאקרו נשמרו');
+  renderDashboard();
 }
 
 async function saveApiKey() {
@@ -3115,6 +3406,11 @@ async function saveSettings() {
     goal:setCurrentGoal, lossRate:setCurrentRate
   };
   p.targetCalories=calcTarget(p); p.bmr=Math.round(calcBMR(p)); p.tdee=calcTDEE(p);
+  // If macro mode is auto (default), refresh macro targets to match new calorie goal
+  if ((p.macroMode || 'auto') === 'auto') {
+    p.macroTargets = null; // stays null so getMacroTargets recomputes on the fly
+    p.macroMode = 'auto';
+  }
   profile=p;
   await fbSet('profile',p);
   showScreen('dashboard');
@@ -3678,8 +3974,31 @@ function renderWeight() {
   // Chart
   renderWeightChart(sorted);
 
+  // Goal status card
+  renderWeightGoalStatus(latest);
+
   // List
   renderWeightList(sorted);
+}
+
+function renderWeightGoalStatus(latest) {
+  const el = document.getElementById('wt-goal-status');
+  if (!el) return;
+  const tw = profile?.targetWeight;
+  if (!tw || !latest) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  const diff = +(latest.weight - tw).toFixed(1);
+  if (Math.abs(diff) < 0.1) { el.innerHTML = `🎯 <strong>הגעת ליעד!</strong> משקל יעד: ${tw} ק"ג`; return; }
+  const dir = diff > 0 ? 'מעל' : 'מתחת ל-';
+  const need = Math.abs(diff).toFixed(1);
+  let extra = '';
+  if (profile?.targetDate) {
+    const days = Math.max(1, Math.round((new Date(profile.targetDate+'T12:00:00') - new Date()) / 86400000));
+    const weeks = Math.max(0.1, days / 7);
+    const rate = (Math.abs(diff) / weeks).toFixed(2);
+    extra = ` · יעד עד ${new Date(profile.targetDate+'T12:00:00').toLocaleDateString('he-IL')} (${days} ימים) → ${rate} ק"ג/שבוע`;
+  }
+  el.innerHTML = `🎯 <strong>${need} ק"ג ${dir}יעד</strong> (${tw} ק"ג)${extra}`;
 }
 
 function renderWeightChart(sorted) {
@@ -3697,21 +4016,37 @@ function renderWeightChart(sorted) {
   svgEl.style.display = 'block';
   if (legendEl) legendEl.style.display = 'flex';
 
-  const W = Math.max(document.getElementById('wt-chart-card').clientWidth - 36, 280);
-  const H = 180;
-  const padL = 42, padR = 16, padT = 16, padB = 32;
+  const cardW = document.getElementById('wt-chart-card').clientWidth - 36;
+  // For >8 points, spread wider (min 60px per point) and let container scroll horizontally
+  const minSpacing = 58;
+  const naturalW = Math.max(cardW, (sorted.length - 1) * minSpacing + 80);
+  const W = naturalW;
+  const H = 240; // taller so numbers breathe
+  const padL = 44, padR = 30, padT = 26, padB = 46;
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
 
   const weights = sorted.map(e=>e.weight);
-  const minW = Math.min(...weights) - 0.5;
-  const maxW = Math.max(...weights) + 0.5;
-  const targetW = profile?.weight || null;
+  const targetW = profile?.targetWeight || null;
+  const currentW = profile?.weight || null;
+  // Include targetW and currentW in the y-range so lines actually show
+  const yValues = [...weights];
+  if (targetW) yValues.push(targetW);
+  if (currentW) yValues.push(currentW);
+  const range = Math.max(1, Math.max(...yValues) - Math.min(...yValues));
+  const pad = Math.max(0.6, range * 0.15);
+  const minW = Math.min(...yValues) - pad;
+  const maxW = Math.max(...yValues) + pad;
 
   const xOf = i => padL + (i/(sorted.length-1))*chartW;
   const yOf = w => padT + (1 - (w-minW)/(maxW-minW))*chartH;
 
-  // Build SVG
+  // Only label every N-th x-tick to avoid overlap. Aim for ~6 labels.
+  const labelEvery = Math.max(1, Math.ceil(sorted.length / 6));
+
+  // Alternate above/below dot labels to prevent them from stacking
+  const dateLabelFmt = d => `${d.getDate()}/${d.getMonth()+1}`;
+
   let svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;font-family:Heebo,sans-serif;">`;
 
   // Grid lines
@@ -3720,14 +4055,15 @@ function renderWeightChart(sorted) {
     const w = minW + (maxW-minW)*i/steps;
     const y = yOf(w);
     svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#e2eaf5" stroke-width="1" stroke-dasharray="3,3"/>`;
-    svg += `<text x="${padL-4}" y="${y+4}" text-anchor="end" font-size="10" fill="#94afc8">${w.toFixed(1)}</text>`;
+    svg += `<text x="${padL-6}" y="${y+4}" text-anchor="end" font-size="11" fill="#94afc8">${w.toFixed(1)}</text>`;
   }
 
-  // Target line (starting weight goal from profile)
+  // Target weight line — DASHED HORIZONTAL if set, plus label
   if (targetW && targetW >= minW && targetW <= maxW) {
     const yt = yOf(targetW);
-    svg += `<line x1="${padL}" y1="${yt}" x2="${W-padR}" y2="${yt}" stroke="#94afc8" stroke-width="1.5" stroke-dasharray="6,4"/>`;
-    svg += `<text x="${W-padR+4}" y="${yt+4}" font-size="10" fill="#94afc8">יעד</text>`;
+    svg += `<line x1="${padL}" y1="${yt}" x2="${W-padR}" y2="${yt}" stroke="#2563eb" stroke-width="1.8" stroke-dasharray="7,5"/>`;
+    svg += `<rect x="${padL+4}" y="${yt-14}" rx="4" ry="4" width="60" height="16" fill="#dbeafe"/>`;
+    svg += `<text x="${padL+34}" y="${yt-2}" text-anchor="middle" font-size="10" font-weight="700" fill="#1d4ed8">יעד ${targetW}</text>`;
   }
 
   // Area fill under line
@@ -3738,7 +4074,7 @@ function renderWeightChart(sorted) {
       areaPath += ` C ${cx} ${yOf(sorted[i-1].weight)}, ${cx} ${yOf(sorted[i].weight)}, ${xOf(i)} ${yOf(sorted[i].weight)}`;
     }
     areaPath += ` L ${xOf(sorted.length-1)} ${H-padB} L ${padL} ${H-padB} Z`;
-    svg += `<defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#16a34a" stop-opacity="0.25"/><stop offset="100%" stop-color="#16a34a" stop-opacity="0"/></linearGradient></defs>`;
+    svg += `<defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#16a34a" stop-opacity="0.28"/><stop offset="100%" stop-color="#16a34a" stop-opacity="0"/></linearGradient></defs>`;
     svg += `<path d="${areaPath}" fill="url(#wg)"/>`;
   }
 
@@ -3751,17 +4087,24 @@ function renderWeightChart(sorted) {
       linePath += ` C ${cx} ${yOf(sorted[i-1].weight)}, ${cx} ${yOf(sorted[i].weight)}, ${xOf(i)} ${yOf(sorted[i].weight)}`;
     }
   }
-  svg += `<path d="${linePath}" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"/>`;
+  svg += `<path d="${linePath}" fill="none" stroke="#16a34a" stroke-width="2.8" stroke-linecap="round"/>`;
 
-  // Dots + labels
+  // Dots + labels — alternate above/below so overlapping values are legible
   sorted.forEach((e,i) => {
     const x=xOf(i), y=yOf(e.weight);
     svg += `<circle cx="${x}" cy="${y}" r="5" fill="#16a34a" stroke="#fff" stroke-width="2"/>`;
-    svg += `<text x="${x}" y="${y-10}" text-anchor="middle" font-size="10" font-weight="700" fill="#16a34a">${e.weight.toFixed(1)}</text>`;
-    // X-axis date label
+    // Value label: above if odd index, below if even (avoids stacking neighbours)
+    const above = (i % 2 === 0);
+    const vy = above ? (y - 12) : (y + 20);
+    svg += `<text x="${x}" y="${vy}" text-anchor="middle" font-size="11" font-weight="700" fill="#16a34a">${e.weight.toFixed(1)}</text>`;
+  });
+
+  // X-axis date labels — only every N-th plus the very last
+  sorted.forEach((e,i) => {
+    if (i % labelEvery !== 0 && i !== sorted.length-1) return;
+    const x = xOf(i);
     const d = new Date(e.date+'T12:00:00');
-    const lbl = `${d.getDate()}/${d.getMonth()+1}`;
-    svg += `<text x="${x}" y="${H-padB+14}" text-anchor="middle" font-size="10" fill="#94afc8">${lbl}</text>`;
+    svg += `<text x="${x}" y="${H-padB+18}" text-anchor="middle" font-size="11" fill="#5b7290" font-weight="600">${dateLabelFmt(d)}</text>`;
   });
 
   svg += '</svg>';
