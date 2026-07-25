@@ -685,17 +685,51 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       <!-- Weight chart -->
       <div class="card" style="padding:18px; margin-bottom:14px;" id="wt-chart-card">
         <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:14px;">📈 גרף התקדמות</div>
-        <div id="wt-chart-wrap" style="overflow-x:auto;">
-          <div id="wt-chart-empty" style="text-align:center; padding:28px; color:var(--muted); font-size:13px;">
-            הוסף לפחות 2 שקילות לצפייה בגרף
+        <div id="wt-chart-empty" style="text-align:center; padding:28px; color:var(--muted); font-size:13px;">
+          הוסף לפחות 2 שקילות לצפייה בגרף
+        </div>
+        <!-- Fixed y-axis + scrollable chart. direction:ltr so the axis stays glued on the left while the chart pans. -->
+        <div id="wt-chart-wrap" style="display:none; direction:ltr; align-items:flex-start;">
+          <svg id="wt-yaxis" xmlns="http://www.w3.org/2000/svg" style="flex:0 0 auto;"></svg>
+          <div id="wt-scroll" style="overflow-x:auto; flex:1; min-width:0;">
+            <svg id="wt-svg" style="overflow:visible;" xmlns="http://www.w3.org/2000/svg"></svg>
           </div>
-          <svg id="wt-svg" style="display:none; overflow:visible;" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
         <div style="display:flex; justify-content:center; gap:18px; margin-top:12px; font-size:11px; color:var(--muted);" id="wt-legend" style="display:none;">
           <span>● <span style="color:var(--accent); font-weight:700;">משקל בפועל</span></span>
           <span>- - <span style="color:#2563eb; font-weight:700;">משקל יעד</span></span>
         </div>
         <div id="wt-goal-status" style="display:none; margin-top:12px; padding:10px 12px; border-radius:10px; background:#eff6ff; border:1px solid #bfdbfe; font-size:12px; color:#1e40af; text-align:center;"></div>
+      </div>
+
+      <!-- 🧮 Body fat calculator (US Navy method — tape measure only, no caliper) -->
+      <div class="card" style="margin-bottom:14px; border-color:rgba(217,119,6,0.35);">
+        <div style="font-size:13px; font-weight:700; margin-bottom:4px;">🧮 מחשבון אחוז שומן</div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:12px;">שיטת חיל הים האמריקאי — סרט מדידה בלבד, בלי קליפר. מדוד היקף צוואר (מתחת לגרוגרת) והיקף בטן (בגובה הטבור).</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label class="lbl">היקף צוואר (ס"מ)</label>
+            <input class="input" id="bf-neck" type="number" step="0.5" inputmode="decimal" placeholder="38">
+          </div>
+          <div>
+            <label class="lbl">היקף בטן (ס"מ)</label>
+            <input class="input" id="bf-belly" type="number" step="0.5" inputmode="decimal" placeholder="90">
+          </div>
+          <div id="bf-hip-wrap" style="display:none;">
+            <label class="lbl">היקף ירכיים (ס"מ)</label>
+            <input class="input" id="bf-hip" type="number" step="0.5" inputmode="decimal" placeholder="95">
+          </div>
+          <div>
+            <label class="lbl">גובה (ס"מ)</label>
+            <input class="input" id="bf-height" type="number" step="0.5" inputmode="decimal" placeholder="174">
+          </div>
+        </div>
+        <button class="btn btn-w" style="margin-top:12px; background:linear-gradient(135deg,#d97706,#b45309);" onclick="calcBodyFat()">🧮 חשב אחוז שומן</button>
+        <div id="bf-result" style="display:none; margin-top:12px; padding:14px; border-radius:12px; background:var(--card2); border:1px solid var(--border); text-align:center;">
+          <div style="font-size:30px; font-weight:800;" id="bf-pct">–</div>
+          <div style="font-size:13px; font-weight:700; margin-top:2px;" id="bf-category">–</div>
+          <div style="font-size:11px; color:var(--muted); margin-top:6px;" id="bf-detail">–</div>
+        </div>
       </div>
 
       <!-- Weight log list -->
@@ -835,13 +869,9 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
     <!-- Always-mounted file input -->
     <input id="img-input" type="file" accept="image/*" style="display:none"
       onchange="handleImageFile(this)">
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab" id="tab-pantry" onclick="setTab('pantry')">⭐ מחסן</button>
-      <button class="tab" id="tab-text"   onclick="setTab('text')">🔍 חיפוש</button>
-      <button class="tab" id="tab-image"  onclick="setTab('image')">📷 תמונה</button>
-      <button class="tab" id="tab-barcode" onclick="setTab('barcode')">🔲 ברקוד</button>
-    </div>
+    <!-- Category chips — replaces the old tab bar. Click a category to filter the pantry;
+         "הכל" shows everything; "חיפוש" opens the search/manual-add panel. -->
+    <div id="cat-tabs" style="display:flex; gap:6px; overflow-x:auto; padding:2px 2px 10px; margin-bottom:10px; -webkit-overflow-scrolling:touch; scrollbar-width:none;"></div>
 
     <!-- PANTRY TAB -->
     <div id="tab-content-pantry">
@@ -2070,33 +2100,11 @@ function renderQuickAdd() {
   if (!pantry.length) { sec.style.display='none'; return; }
   sec.style.display='block';
 
-  // Show only top 3 (sorted by use count — pantry is already sorted in saveToPantry)
-  const VISIBLE = 3;
-  const top = pantry.slice(0, VISIBLE);
-  const rest = pantry.length - VISIBLE;
-
-  let html = top.map(item => {
-    const c = item.count || 1;
-    const badge = c >= 2
-      ? `<span style="font-size:9px;color:#fff;background:linear-gradient(135deg,var(--accent),#15803d);border-radius:8px;padding:2px 6px;font-weight:800;line-height:1;flex-shrink:0;">×${c}</span>`
-      : '';
-    return `<button class="chip" onclick="quickAdd('${item.id}')" id="chip-${item.id}">
-      <span style="display:flex;align-items:center;gap:5px;min-width:0;">
-        ${badge}
-        <span style="font-size:13px;font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.name}</span>
-      </span>
-      <span style="font-size:11px;color:var(--accent);font-weight:800;flex-shrink:0;">${item.calories} קל׳</span>
-    </button>`;
-  }).join('');
-
-  // "Full pantry" button — opens add modal at the categorized pantry tab
-  if (rest > 0) {
-    html += `<button class="chip chip-more" onclick="openAddModal(); setTab('pantry');" style="background:linear-gradient(135deg,#dbeafe,#bfdbfe); border-color:#93c5fd;" title="הצג את כל המחסן">
-      <span style="font-size:12px; color:#1e40af; font-weight:800;">📦 כל המחסן (עוד ${rest})</span>
-    </button>`;
-  }
-
-  strip.innerHTML = html;
+  // Single button — opens the categorized pantry inside the add-food modal
+  strip.innerHTML = `<button class="chip chip-more" onclick="openAddModal(); setTab('pantry');"
+    style="flex:1 1 100%; justify-content:center; padding:12px; background:linear-gradient(135deg,#dbeafe,#bfdbfe); border-color:#93c5fd;">
+    <span style="font-size:14px; color:#1e40af; font-weight:800;">📦 הוספה מהירה מהמחסן (${pantry.length} מוצרים)</span>
+  </button>`;
 }
 
 // ══════════════════════════════════════════
@@ -2297,8 +2305,16 @@ function renderPantryTab() {
     if (!groups.has(cat.key)) groups.set(cat.key, {label: cat.label, items: []});
     groups.get(cat.key).items.push(item);
   });
-  // Order: categories as defined, then "other" last
-  const ordered = [...PANTRY_CATEGORIES.map(c=>c.key), 'other'].filter(k => groups.has(k));
+  // Order: categories as defined, then "other" last.
+  // When a specific category chip is selected — show only that category.
+  let ordered = [...PANTRY_CATEGORIES.map(c=>c.key), 'other'].filter(k => groups.has(k));
+  if (pantryFilter !== 'all' && pantryFilter !== 'search') {
+    ordered = ordered.filter(k => k === pantryFilter);
+    if (!ordered.length) {
+      list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">אין מוצרים בקטגוריה הזו</div>';
+      return;
+    }
+  }
 
   const rowHtml = item => `
     <div data-pantry-id="${item.id}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--card2);border-radius:12px;border:1px solid var(--border);margin-bottom:8px;">
@@ -2407,18 +2423,61 @@ window.addEventListener('popstate', () => {
 });
 
 // ══════════════════════════════════════════
-// TABS
+// CATEGORY TABS (replaces the old pantry/search/image/barcode tab bar)
 // ══════════════════════════════════════════
-const tabColors = { pantry:'gold', text:'blue', image:'teal', barcode:'purple' };
+let pantryFilter = 'all'; // 'all' | category key | 'search'
+
+// Legacy wrapper — old callers use setTab('pantry') / setTab('text')
 function setTab(name) {
-  ['pantry','text','image','barcode'].forEach(t=>{
-    document.getElementById('tab-content-'+t).style.display = t===name?'':'none';
-    const btn = document.getElementById('tab-'+t);
-    btn.className = 'tab';
-    if (t===name) btn.classList.add('active-'+tabColors[t]);
+  if (name === 'text') selectCatTab('search');
+  else selectCatTab('all');
+}
+
+function selectCatTab(key) {
+  pantryFilter = key;
+  const showSearch = (key === 'search');
+  document.getElementById('tab-content-pantry').style.display = showSearch ? 'none' : '';
+  document.getElementById('tab-content-text').style.display   = showSearch ? '' : 'none';
+  // Image/barcode panels stay hidden — their tabs were removed from the UI
+  document.getElementById('tab-content-image').style.display   = 'none';
+  document.getElementById('tab-content-barcode').style.display = 'none';
+  renderCatTabs();
+  if (showSearch) setTimeout(()=>document.getElementById('search-input').focus(),100);
+  else renderPantryTab();
+}
+
+function renderCatTabs() {
+  const bar = document.getElementById('cat-tabs');
+  if (!bar) return;
+  if (!Array.isArray(pantry)) pantry = pantry ? Object.values(pantry).filter(Boolean) : [];
+
+  // Count items per category (render-time only, storage untouched)
+  const counts = new Map();
+  pantry.forEach(item => {
+    const k = pantryCategoryOf(item).key;
+    counts.set(k, (counts.get(k) || 0) + 1);
   });
-  if (name==='pantry') renderPantryTab();
-  if (name==='text') setTimeout(()=>document.getElementById('search-input').focus(),100);
+
+  const chipStyle = active => `flex:0 0 auto; display:inline-flex; align-items:center; gap:5px;
+    padding:8px 13px; border-radius:18px; font-size:12px; font-weight:800; cursor:pointer;
+    font-family:inherit; white-space:nowrap; transition:all 0.15s;
+    ${active
+      ? 'background:linear-gradient(135deg,#d97706,#b45309); color:#fff; border:1.5px solid #b45309; box-shadow:0 3px 10px rgba(217,119,6,0.35);'
+      : 'background:var(--card); color:var(--text); border:1.5px solid var(--border);'}`;
+
+  let html = `<button style="${chipStyle(pantryFilter==='all')}" onclick="selectCatTab('all')">⭐ הכל <span style="font-size:10px; opacity:0.75;">${pantry.length}</span></button>`;
+
+  PANTRY_CATEGORIES.forEach(cat => {
+    const c = counts.get(cat.key);
+    if (!c) return; // only show categories that have items
+    html += `<button style="${chipStyle(pantryFilter===cat.key)}" onclick="selectCatTab('${cat.key}')">${cat.label} <span style="font-size:10px; opacity:0.75;">${c}</span></button>`;
+  });
+  if (counts.get('other')) {
+    html += `<button style="${chipStyle(pantryFilter==='other')}" onclick="selectCatTab('other')">📦 שונות <span style="font-size:10px; opacity:0.75;">${counts.get('other')}</span></button>`;
+  }
+  html += `<button style="${chipStyle(pantryFilter==='search')}" onclick="selectCatTab('search')">🔍 חיפוש</button>`;
+
+  bar.innerHTML = html;
 }
 
 // ══════════════════════════════════════════
@@ -3977,6 +4036,9 @@ function renderWeight() {
   // Goal status card
   renderWeightGoalStatus(latest);
 
+  // Body-fat calculator prefill (height from profile, belly from latest measurement)
+  prefillBodyFatInputs();
+
   // List
   renderWeightList(sorted);
 }
@@ -4001,28 +4063,99 @@ function renderWeightGoalStatus(latest) {
   el.innerHTML = `🎯 <strong>${need} ק"ג ${dir}יעד</strong> (${tw} ק"ג)${extra}`;
 }
 
+// ══════════════════════════════════════════
+// 🧮 BODY FAT — US Navy circumference method (no caliper)
+// Men:   495 / (1.0324 − 0.19077·log10(belly−neck) + 0.15456·log10(height)) − 450
+// Women: 495 / (1.29579 − 0.35004·log10(belly+hip−neck) + 0.22100·log10(height)) − 450
+// ══════════════════════════════════════════
+function prefillBodyFatInputs() {
+  const isFemale = profile?.gender === 'female';
+  const hipWrap = document.getElementById('bf-hip-wrap');
+  if (hipWrap) hipWrap.style.display = isFemale ? '' : 'none';
+  const hEl = document.getElementById('bf-height');
+  if (hEl && !hEl.value && profile?.height) hEl.value = profile.height;
+  // Prefill belly from the latest body measurement that has one
+  const bEl = document.getElementById('bf-belly');
+  if (bEl && !bEl.value && Array.isArray(measurements) && measurements.length) {
+    const withBelly = [...measurements].sort((a,b)=>a.date.localeCompare(b.date)).reverse().find(m => typeof m.belly === 'number');
+    if (withBelly) bEl.value = withBelly.belly;
+  }
+}
+
+function calcBodyFat() {
+  const neck   = parseFloat(document.getElementById('bf-neck').value);
+  const belly  = parseFloat(document.getElementById('bf-belly').value);
+  const height = parseFloat(document.getElementById('bf-height').value);
+  const isFemale = profile?.gender === 'female';
+  const hip = isFemale ? parseFloat(document.getElementById('bf-hip').value) : 0;
+
+  const resEl = document.getElementById('bf-result');
+  const show = (msg, isErr) => {
+    resEl.style.display = 'block';
+    if (isErr) {
+      document.getElementById('bf-pct').textContent = '⚠️';
+      document.getElementById('bf-category').textContent = msg;
+      document.getElementById('bf-detail').textContent = '';
+    }
+  };
+
+  if (!neck || !belly || !height || (isFemale && !hip)) { show('נא למלא את כל השדות', true); return; }
+  if (neck < 20 || neck > 70 || belly < 40 || belly > 220 || height < 100 || height > 230) { show('ערכים מחוץ לטווח סביר', true); return; }
+  const circ = isFemale ? (belly + hip - neck) : (belly - neck);
+  if (circ <= 0) { show('היקף הבטן חייב להיות גדול מהיקף הצוואר', true); return; }
+
+  const bf = isFemale
+    ? 495 / (1.29579 - 0.35004*Math.log10(circ) + 0.22100*Math.log10(height)) - 450
+    : 495 / (1.0324  - 0.19077*Math.log10(circ) + 0.15456*Math.log10(height)) - 450;
+
+  if (!isFinite(bf) || bf < 2 || bf > 60) { show('התוצאה לא סבירה — בדוק את המדידות', true); return; }
+
+  // Category bands (men / women)
+  const bands = isFemale
+    ? [{max:13,label:'שומן חיוני',c:'#2563eb'},{max:20,label:'ספורטיבי 🏆',c:'#16a34a'},{max:24,label:'כושר טוב 💪',c:'#65a30d'},{max:31,label:'ממוצע',c:'#d97706'},{max:99,label:'גבוה',c:'#dc2626'}]
+    : [{max:5, label:'שומן חיוני',c:'#2563eb'},{max:13,label:'ספורטיבי 🏆',c:'#16a34a'},{max:17,label:'כושר טוב 💪',c:'#65a30d'},{max:24,label:'ממוצע',c:'#d97706'},{max:99,label:'גבוה',c:'#dc2626'}];
+  const band = bands.find(b => bf <= b.max);
+
+  const fatMass = profile?.weight ? (profile.weight * bf / 100) : null;
+  const leanMass = profile?.weight && fatMass !== null ? (profile.weight - fatMass) : null;
+
+  resEl.style.display = 'block';
+  const pctEl = document.getElementById('bf-pct');
+  pctEl.textContent = bf.toFixed(1) + '%';
+  pctEl.style.color = band.c;
+  const catEl = document.getElementById('bf-category');
+  catEl.textContent = band.label;
+  catEl.style.color = band.c;
+  document.getElementById('bf-detail').textContent = fatMass !== null
+    ? `מסת שומן ~${fatMass.toFixed(1)} ק"ג · מסה רזה ~${leanMass.toFixed(1)} ק"ג (לפי משקל ${profile.weight} ק"ג)`
+    : 'עדכן משקל בפרופיל כדי לראות מסת שומן בק"ג';
+}
+
 function renderWeightChart(sorted) {
   const emptyEl = document.getElementById('wt-chart-empty');
+  const wrapEl  = document.getElementById('wt-chart-wrap');
   const svgEl   = document.getElementById('wt-svg');
+  const axisEl  = document.getElementById('wt-yaxis');
   const legendEl = document.getElementById('wt-legend');
 
   if (sorted.length < 2) {
     emptyEl.style.display = 'block';
-    svgEl.style.display = 'none';
+    wrapEl.style.display = 'none';
     if (legendEl) legendEl.style.display = 'none';
     return;
   }
   emptyEl.style.display = 'none';
-  svgEl.style.display = 'block';
+  wrapEl.style.display = 'flex';
   if (legendEl) legendEl.style.display = 'flex';
 
-  const cardW = document.getElementById('wt-chart-card').clientWidth - 36;
+  const AXIS_W = 46; // fixed y-axis column width
+  const cardW = document.getElementById('wt-chart-card').clientWidth - 36 - AXIS_W;
   // For >8 points, spread wider (min 60px per point) and let container scroll horizontally
   const minSpacing = 58;
-  const naturalW = Math.max(cardW, (sorted.length - 1) * minSpacing + 80);
+  const naturalW = Math.max(cardW, (sorted.length - 1) * minSpacing + 60);
   const W = naturalW;
   const H = 240; // taller so numbers breathe
-  const padL = 44, padR = 30, padT = 26, padB = 46;
+  const padL = 14, padR = 30, padT = 26, padB = 46;
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
 
@@ -4047,23 +4180,38 @@ function renderWeightChart(sorted) {
   // Alternate above/below dot labels to prevent them from stacking
   const dateLabelFmt = d => `${d.getDate()}/${d.getMonth()+1}`;
 
-  let svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;font-family:Heebo,sans-serif;">`;
-
-  // Grid lines
   const steps = 4;
+
+  // ── Fixed y-axis (separate SVG that never scrolls) ──
+  let axis = `<svg width="${AXIS_W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:Heebo,sans-serif;">`;
   for (let i=0;i<=steps;i++) {
     const w = minW + (maxW-minW)*i/steps;
     const y = yOf(w);
-    svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#e2eaf5" stroke-width="1" stroke-dasharray="3,3"/>`;
-    svg += `<text x="${padL-6}" y="${y+4}" text-anchor="end" font-size="11" fill="#94afc8">${w.toFixed(1)}</text>`;
+    axis += `<text x="${AXIS_W-6}" y="${y+4}" text-anchor="end" font-size="11" font-weight="600" fill="#7b93ad">${w.toFixed(1)}</text>`;
   }
-
-  // Target weight line — DASHED HORIZONTAL if set, plus label
+  // Mark the target value on the fixed axis so it's always visible
   if (targetW && targetW >= minW && targetW <= maxW) {
     const yt = yOf(targetW);
-    svg += `<line x1="${padL}" y1="${yt}" x2="${W-padR}" y2="${yt}" stroke="#2563eb" stroke-width="1.8" stroke-dasharray="7,5"/>`;
-    svg += `<rect x="${padL+4}" y="${yt-14}" rx="4" ry="4" width="60" height="16" fill="#dbeafe"/>`;
-    svg += `<text x="${padL+34}" y="${yt-2}" text-anchor="middle" font-size="10" font-weight="700" fill="#1d4ed8">יעד ${targetW}</text>`;
+    axis += `<rect x="1" y="${yt-9}" rx="4" ry="4" width="${AXIS_W-4}" height="15" fill="#dbeafe"/>`;
+    axis += `<text x="${AXIS_W-6}" y="${yt+3}" text-anchor="end" font-size="10" font-weight="800" fill="#1d4ed8">${targetW}</text>`;
+  }
+  axis += '</svg>';
+  axisEl.outerHTML = axis.replace('<svg ', '<svg id="wt-yaxis" style="flex:0 0 auto;" ');
+
+  // ── Scrollable chart ──
+  let svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;font-family:Heebo,sans-serif;">`;
+
+  // Grid lines
+  for (let i=0;i<=steps;i++) {
+    const w = minW + (maxW-minW)*i/steps;
+    const y = yOf(w);
+    svg += `<line x1="0" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#e2eaf5" stroke-width="1" stroke-dasharray="3,3"/>`;
+  }
+
+  // Target weight line — DASHED HORIZONTAL if set (value badge lives on the fixed axis)
+  if (targetW && targetW >= minW && targetW <= maxW) {
+    const yt = yOf(targetW);
+    svg += `<line x1="0" y1="${yt}" x2="${W-padR}" y2="${yt}" stroke="#2563eb" stroke-width="1.8" stroke-dasharray="7,5"/>`;
   }
 
   // Area fill under line
@@ -4111,6 +4259,10 @@ function renderWeightChart(sorted) {
   svgEl.innerHTML = svg;
   svgEl.setAttribute('width', W);
   svgEl.setAttribute('height', H);
+
+  // Open scrolled to the most recent entries (chart is LTR: newest on the right)
+  const scroller = document.getElementById('wt-scroll');
+  if (scroller) scroller.scrollLeft = scroller.scrollWidth;
 }
 
 function renderWeightList(sorted) {
