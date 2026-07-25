@@ -1145,8 +1145,9 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       <button onclick="closeModal()" style="background:var(--card2); border:1px solid var(--border); border-radius:10px; width:32px; height:32px; cursor:pointer; font-size:16px;">✕</button>
     </div>
 
-    <!-- Add to this day button (always visible) -->
-    <button class="btn btn-w" id="day-add-btn" style="background:linear-gradient(135deg,var(--accent),#15803d); margin-bottom:14px; font-size:14px;" onclick="addToCurrentDay()">➕ הוסף ארוחה ליום זה</button>
+    <!-- Add to this day buttons (always visible) -->
+    <button class="btn btn-w" id="day-add-btn" style="background:linear-gradient(135deg,var(--accent),#15803d); margin-bottom:8px; font-size:14px;" onclick="addToCurrentDay()">➕ הוסף ארוחה ליום זה</button>
+    <button class="btn btn-w" style="background:var(--card2); color:var(--text); border:1.5px solid var(--border); margin-bottom:14px; font-size:13px;" onclick="openManualDayModal()">✏️ הזן סכום קלוריות ידני ליום</button>
 
     <!-- Empty state -->
     <div id="day-detail-empty" style="display:none; text-align:center; padding:24px 16px; color:var(--muted);">
@@ -1215,6 +1216,35 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       <!-- Export day button -->
       <button class="btn btn-w btn-blue" onclick="exportXLSX('day')">📥 ייצא יום זה לאקסל</button>
     </div>
+  </div>
+</div>
+
+<!-- MANUAL DAY TOTAL MODAL -->
+<div class="modal-overlay" id="modal-manual-day">
+  <div class="modal-box">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <h3 style="font-size:17px; font-weight:800;">✏️ סכום קלוריות ידני</h3>
+      <button onclick="closeModal()" style="background:var(--card2); border:1px solid var(--border); border-radius:10px; width:32px; height:32px; cursor:pointer; font-size:16px;">✕</button>
+    </div>
+    <div style="font-size:12px; color:var(--muted); margin-bottom:14px; line-height:1.6;">
+      לימים ששכחת לתעד — הזן הערכה כללית של סך הקלוריות.<br>
+      ההערכה נכללת בסיכומים היומיים והשבועיים בדיוק כמו ארוחות רגילות.
+    </div>
+    <div style="background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:14px; font-size:13px; font-weight:700;" id="manual-day-date">–</div>
+
+    <label class="lbl">סה"כ קלוריות ליום</label>
+    <input class="input" id="manual-day-cal" type="number" inputmode="numeric" placeholder="1800" oninput="updateManualDayHint()">
+    <div id="manual-day-hint" style="font-size:11px; color:var(--muted); margin-top:8px; background:var(--card2); padding:8px 10px; border-radius:8px;">–</div>
+
+    <div style="font-size:11px; color:var(--dim); margin-top:10px; line-height:1.5;">
+      💡 אם כבר יש ארוחות רשומות ליום הזה — ההערכה נוספת <strong>מעליהן</strong>. מומלץ להזין רק את ההפרש, או למחוק את ההערכה ולתעד ארוחות.
+    </div>
+
+    <div style="display:flex; gap:8px; margin-top:16px;">
+      <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="closeModal()">ביטול</button>
+      <button class="btn btn-sm" style="flex:2; background:linear-gradient(135deg,var(--accent),#15803d); color:#fff;" onclick="saveManualDay()">✓ שמור</button>
+    </div>
+    <button id="manual-day-delete" style="display:none; width:100%; margin-top:8px; padding:10px; border-radius:10px; border:1px solid var(--danger); background:transparent; color:var(--danger); cursor:pointer; font-family:inherit; font-size:12px; font-weight:600;" onclick="deleteManualDay()">🗑 מחק את ההערכה הידנית ליום זה</button>
   </div>
 </div>
 
@@ -2198,10 +2228,10 @@ function renderFoodList() {
     const m = getEntryMacros(item);
     return `
     <div class="food-row" id="row-${item.id}" style="flex-wrap:wrap;">
-      <div style="width:36px;height:36px;border-radius:10px;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🍽</div>
+      <div style="width:36px;height:36px;border-radius:10px;background:${item.manualEstimate?'#fef3c7':'var(--accent-light)'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${item.manualEstimate?'✏️':'🍽'}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:14px;font-weight:600;">${item.name}</div>
-        <div style="font-size:11px;color:var(--muted);">${item.grams}ג׳ · ${item.time}</div>
+        <div style="font-size:11px;color:var(--muted);">${item.manualEstimate?'הערכה ידנית':item.grams+'ג׳'} · ${item.time}</div>
       </div>
       <div style="font-size:15px;font-weight:800;color:var(--accent);background:var(--accent-light);border-radius:8px;padding:4px 9px;flex-shrink:0;">
         ${item.calories}<span style="font-size:9px;font-weight:400;"> קל׳</span>
@@ -2528,6 +2558,8 @@ async function deleteEntry(id, btn) {
 function openEdit(id) {
   editFoodItem = entries.find(e=>e.id===id);
   if (!editFoodItem) return;
+  // Manual day estimates have no grams/cal100 — edit them in their own modal
+  if (editFoodItem.manualEstimate) { openManualDayModal(todayStr()); return; }
   document.getElementById('edit-id').value = id;
   document.getElementById('edit-name').value = editFoodItem.name;
   document.getElementById('edit-grams').value = editFoodItem.grams;
@@ -3443,8 +3475,8 @@ function openDayDetail(date) {
   items.forEach((e, i) => {
     tbl += `<tr style="border-top:1px solid var(--border); ${i%2?'background:#fafbfd;':''}">
       <td style="padding:7px 5px; color:var(--muted); font-size:11px; white-space:nowrap;">${e.time||'-'}</td>
-      <td style="padding:7px 5px; font-weight:600;">${e.name}${e.planned?' <span style="font-size:9px; color:#7c3aed;">🔮</span>':''}</td>
-      <td style="padding:7px 4px; text-align:center; color:var(--muted); font-size:11px;">${e.grams}ג'</td>
+      <td style="padding:7px 5px; font-weight:600;">${e.manualEstimate?'✏️ ':''}${e.name}${e.planned?' <span style="font-size:9px; color:#7c3aed;">🔮</span>':''}</td>
+      <td style="padding:7px 4px; text-align:center; color:var(--muted); font-size:11px;">${e.manualEstimate?'—':e.grams+'ג\''}</td>
       <td style="padding:7px 4px; text-align:center; font-weight:800; color:var(--accent);">${e.calories}</td>
       <td style="padding:7px 4px; text-align:center; font-size:11px;">${e.prot||0}</td>
       <td style="padding:7px 4px; text-align:center; font-size:11px;">${e.carb||0}</td>
@@ -3507,6 +3539,114 @@ function addToCurrentDay() {
   if (!date) return;
   closeModal();
   openAddModal(date);
+}
+
+// ══════════════════════════════════════════
+// ✏️ MANUAL DAY TOTAL
+// A whole-day calorie estimate for days that were never logged.
+// Stored as a normal entry flagged `manualEstimate`, so it flows into
+// every existing total (day, week, history, export) with no extra plumbing.
+// ══════════════════════════════════════════
+const MANUAL_ENTRY_NAME = 'הערכה ידנית ליום';
+let _manualDayDate = null;
+
+function findManualEntry(date) {
+  const day = getAllDays().find(d => d.date === date);
+  return (day?.entries || []).find(e => e.manualEstimate) || null;
+}
+
+function openManualDayModal(date) {
+  _manualDayDate = date || _currentDayExport || todayStr();
+  const existing = findManualEntry(_manualDayDate);
+  document.getElementById('manual-day-date').textContent = '📅 ' + heDay(_manualDayDate);
+  document.getElementById('manual-day-cal').value = existing ? existing.calories : '';
+  document.getElementById('manual-day-delete').style.display = existing ? 'block' : 'none';
+  updateManualDayHint();
+  openModal('manual-day');
+}
+
+function updateManualDayHint() {
+  const el = document.getElementById('manual-day-hint');
+  const v = +document.getElementById('manual-day-cal').value;
+  const target = profile?.targetCalories || 2000;
+  const day = getAllDays().find(d => d.date === _manualDayDate);
+  const others = (day?.entries || []).filter(e => !e.manualEstimate)
+    .reduce((s,e) => s + (e.calories||0), 0);
+
+  if (!v) { el.textContent = 'הזן סכום קלוריות משוער.'; el.style.color = 'var(--muted)'; return; }
+  const total = v + others;
+  const diff = total - target;
+  const parts = [];
+  if (others) parts.push(`${n(others)} קל׳ מארוחות רשומות + ${n(v)} הערכה = <strong>${n(total)}</strong>`);
+  else parts.push(`סה"כ ליום: <strong>${n(total)} קל׳</strong>`);
+  parts.push(diff > 0
+    ? `<span style="color:var(--danger);">חריגה של ${n(diff)} קל׳ מהיעד (${n(target)})</span>`
+    : `<span style="color:var(--accent);">${n(Math.abs(diff))} קל׳ מתחת ליעד (${n(target)})</span>`);
+  el.innerHTML = parts.join(' · ');
+  el.style.color = 'var(--muted)';
+}
+
+async function saveManualDay() {
+  const date = _manualDayDate;
+  const cal = +document.getElementById('manual-day-cal').value;
+  if (!date) return;
+  if (!cal || cal < 1 || cal > 20000) { alert('הזן סכום קלוריות תקין (1–20000).'); return; }
+
+  // Macro breakdown uses the same fallback estimate as any food with unknown macros
+  const m = getMacros(0, cal, 100);
+  const buildEntry = (id) => ({
+    id: id || uid(),
+    name: MANUAL_ENTRY_NAME,
+    cal100: 0, grams: 0,
+    calories: Math.round(cal),
+    time: timeNow(), foodId: 0,
+    prot: m.prot, carb: m.carb, fat: m.fat,
+    manualEstimate: true,
+    planned: date > todayStr()
+  });
+
+  const today = todayStr();
+  if (date === today) {
+    const idx = entries.findIndex(e => e.manualEstimate);
+    if (idx >= 0) entries[idx] = buildEntry(entries[idx].id);
+    else entries = [...entries, buildEntry()];
+    await fbSet('today', {date, entries});
+  } else {
+    if (!Array.isArray(history)) history = history ? Object.values(history).filter(Boolean) : [];
+    const di = history.findIndex(d => d.date === date);
+    if (di >= 0) {
+      const day = {...history[di]};
+      const list = [...(day.entries || [])];
+      const ei = list.findIndex(e => e.manualEstimate);
+      if (ei >= 0) list[ei] = buildEntry(list[ei].id);
+      else list.push(buildEntry());
+      day.entries = list;
+      day.totalCalories = list.reduce((s,e)=>s+(e.calories||0), 0);
+      history[di] = day;
+    } else {
+      const entry = buildEntry();
+      history.push({
+        date, entries: [entry],
+        totalCalories: entry.calories,
+        target: profile?.targetCalories || 2000
+      });
+    }
+    await safeFbSetHistory(history, 'manual_day_total', {date, calories: cal});
+  }
+
+  closeModal();
+  renderDashboard();
+  renderHistory();
+  openDayDetail(date);
+}
+
+async function deleteManualDay() {
+  const date = _manualDayDate;
+  const existing = findManualEntry(date);
+  if (!date || !existing) return;
+  if (!confirm('למחוק את ההערכה הידנית ליום זה?')) return;
+  closeModal();
+  await deleteEntryFromDay(date, existing.id);
 }
 
 async function deleteEntryFromDay(date, entryId, ev) {
