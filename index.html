@@ -630,55 +630,86 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
     </div>
   </div>
 
-  <!-- WEIGHT TRACKING SCREEN -->
+  <!-- BODY TRACKING SCREEN — one form, one timeline -->
   <div id="screen-weight" class="screen">
     <div style="padding:20px 20px 0; margin-bottom:14px;">
       <h2 style="font-size:18px; font-weight:700;">מעקב גוף 📊</h2>
-    </div>
-    <div style="padding:0 20px 0;">
-      <div class="tabs">
-        <button class="tab active-blue" id="mtab-weight" onclick="setMtab('weight')">⚖️ משקל</button>
-        <button class="tab" id="mtab-measure" onclick="setMtab('measure')">📏 היקפים</button>
-      </div>
+      <div style="font-size:12px; color:var(--muted); margin-top:3px;">משקל, היקפים ואחוז שומן — הכל במקום אחד</div>
     </div>
 
-    <!-- ───── WEIGHT TAB ───── -->
-    <div id="mtab-content-weight" style="padding:0 20px;">
+    <div style="padding:0 20px;">
 
-      <!-- Log weight card -->
-      <div class="card" style="margin-bottom:14px; border-color:rgba(22,163,74,0.3);">
-        <div style="font-size:13px; font-weight:700; margin-bottom:12px;">📍 עדכון משקל שבועי</div>
-        <div style="display:flex; gap:10px; align-items:flex-end;">
-          <div style="flex:1;">
-            <label class="lbl">משקל נוכחי (ק"ג)</label>
-            <input class="input" id="wt-input" type="number" step="0.1" inputmode="decimal" placeholder="79.0">
-          </div>
+      <!-- ⭐ Unified entry card -->
+      <div class="card" style="margin-bottom:14px; border-color:rgba(22,163,74,0.35);">
+        <div style="font-size:14px; font-weight:800; margin-bottom:4px;">📍 עדכון מדידה</div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:12px;">מלא רק את מה שמדדת — כל השאר יישאר ריק ולא יוצג.</div>
+
+        <div style="display:flex; gap:10px; margin-bottom:12px;">
           <div style="flex:1;">
             <label class="lbl">תאריך</label>
-            <input class="input" id="wt-date" type="date">
+            <input class="input" id="bd-date" type="date">
+          </div>
+          <div style="flex:1;">
+            <label class="lbl" style="color:var(--accent);">⚖️ משקל (ק"ג)</label>
+            <input class="input" id="bd-weight" type="number" step="0.1" inputmode="decimal" placeholder="79.0" oninput="updateBodyFatPreview()">
           </div>
         </div>
-        <div style="margin-top:8px;">
-          <label class="lbl">הערה (אופציונלי)</label>
-          <input class="input" id="wt-note" placeholder='למשל: "לאחר אימון"'>
+
+        <div style="font-size:12px; font-weight:700; color:var(--muted); margin:4px 0 8px;">📏 היקפים (ס"מ)</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label class="lbl">צוואר</label>
+            <input class="input" id="bd-neck" type="number" step="0.5" inputmode="decimal" placeholder="38" oninput="updateBodyFatPreview()">
+          </div>
+          <div>
+            <label class="lbl">בטן</label>
+            <input class="input" id="bd-belly" type="number" step="0.5" inputmode="decimal" placeholder="90" oninput="updateBodyFatPreview()">
+          </div>
+          <div>
+            <label class="lbl">חזה</label>
+            <input class="input" id="bd-chest" type="number" step="0.5" inputmode="decimal" placeholder="100">
+          </div>
+          <div>
+            <label class="lbl">ירך</label>
+            <input class="input" id="bd-thigh" type="number" step="0.5" inputmode="decimal" placeholder="55">
+          </div>
+          <div>
+            <label class="lbl">יד קדמית</label>
+            <input class="input" id="bd-arm" type="number" step="0.5" inputmode="decimal" placeholder="35">
+          </div>
+          <div id="bd-hip-wrap" style="display:none;">
+            <label class="lbl">ירכיים</label>
+            <input class="input" id="bd-hip" type="number" step="0.5" inputmode="decimal" placeholder="95" oninput="updateBodyFatPreview()">
+          </div>
         </div>
-        <button class="btn btn-w" style="margin-top:12px; background:linear-gradient(135deg,var(--accent),var(--accent-light-text,#15803d));" onclick="logWeight()">✓ שמור שקילה</button>
-        <div id="wt-msg" style="display:none; margin-top:10px; text-align:center; font-size:13px; font-weight:700; color:var(--accent);"></div>
+
+        <!-- Live body-fat preview: computed from neck + belly + height (US Navy) -->
+        <div id="bd-bf-box" style="margin-top:12px; padding:10px 12px; border-radius:10px; background:#fffbeb; border:1px solid #fde68a; font-size:12px; color:#92400e;">
+          🧮 <strong>אחוז שומן:</strong> <span id="bd-bf-text">מלא צוואר + בטן כדי לחשב אוטומטית</span>
+        </div>
+
+        <div style="margin-top:10px;">
+          <label class="lbl">הערה (אופציונלי)</label>
+          <input class="input" id="bd-note" placeholder='למשל: "בוקר, על קיבה ריקה"'>
+        </div>
+
+        <button class="btn btn-w" style="margin-top:12px; background:linear-gradient(135deg,var(--accent),#15803d);" onclick="logBodyEntry()">✓ שמור מדידה</button>
+        <div id="bd-msg" style="display:none; margin-top:10px; text-align:center; font-size:13px; font-weight:700;"></div>
       </div>
 
       <!-- Summary stats -->
       <div style="display:flex; gap:10px; margin-bottom:14px;">
         <div class="card" style="flex:1; text-align:center; padding:14px;">
-          <div style="font-size:22px; font-weight:800; color:var(--accent);" id="wt-current">-</div>
+          <div style="font-size:21px; font-weight:800; color:var(--accent);" id="wt-current">-</div>
           <div style="font-size:11px; color:var(--muted); margin-top:3px;">משקל נוכחי</div>
         </div>
         <div class="card" style="flex:1; text-align:center; padding:14px;">
-          <div style="font-size:22px; font-weight:800;" id="wt-change" style="color:var(--accent);">-</div>
+          <div style="font-size:21px; font-weight:800;" id="wt-change">-</div>
           <div style="font-size:11px; color:var(--muted); margin-top:3px;">שינוי כולל</div>
         </div>
         <div class="card" style="flex:1; text-align:center; padding:14px;">
-          <div style="font-size:22px; font-weight:800; color:var(--blue);" id="wt-entries-count">0</div>
-          <div style="font-size:11px; color:var(--muted); margin-top:3px;">שקילות</div>
+          <div style="font-size:21px; font-weight:800; color:#d97706;" id="wt-bf">-</div>
+          <div style="font-size:11px; color:var(--muted); margin-top:3px;">אחוז שומן</div>
         </div>
       </div>
 
@@ -702,92 +733,18 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
         <div id="wt-goal-status" style="display:none; margin-top:12px; padding:10px 12px; border-radius:10px; background:#eff6ff; border:1px solid #bfdbfe; font-size:12px; color:#1e40af; text-align:center;"></div>
       </div>
 
-      <!-- 🧮 Body fat calculator (US Navy method — tape measure only, no caliper) -->
-      <div class="card" style="margin-bottom:14px; border-color:rgba(217,119,6,0.35);">
-        <div style="font-size:13px; font-weight:700; margin-bottom:4px;">🧮 מחשבון אחוז שומן</div>
-        <div style="font-size:11px; color:var(--muted); margin-bottom:12px;">שיטת חיל הים האמריקאי — סרט מדידה בלבד, בלי קליפר. מדוד היקף צוואר (מתחת לגרוגרת) והיקף בטן (בגובה הטבור).</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-          <div>
-            <label class="lbl">היקף צוואר (ס"מ)</label>
-            <input class="input" id="bf-neck" type="number" step="0.5" inputmode="decimal" placeholder="38">
-          </div>
-          <div>
-            <label class="lbl">היקף בטן (ס"מ)</label>
-            <input class="input" id="bf-belly" type="number" step="0.5" inputmode="decimal" placeholder="90">
-          </div>
-          <div id="bf-hip-wrap" style="display:none;">
-            <label class="lbl">היקף ירכיים (ס"מ)</label>
-            <input class="input" id="bf-hip" type="number" step="0.5" inputmode="decimal" placeholder="95">
-          </div>
-          <div>
-            <label class="lbl">גובה (ס"מ)</label>
-            <input class="input" id="bf-height" type="number" step="0.5" inputmode="decimal" placeholder="174">
-          </div>
-        </div>
-        <button class="btn btn-w" style="margin-top:12px; background:linear-gradient(135deg,#d97706,#b45309);" onclick="calcBodyFat()">🧮 חשב אחוז שומן</button>
-        <div id="bf-result" style="display:none; margin-top:12px; padding:14px; border-radius:12px; background:var(--card2); border:1px solid var(--border); text-align:center;">
-          <div style="font-size:30px; font-weight:800;" id="bf-pct">–</div>
-          <div style="font-size:13px; font-weight:700; margin-top:2px;" id="bf-category">–</div>
-          <div style="font-size:11px; color:var(--muted); margin-top:6px;" id="bf-detail">–</div>
-        </div>
-      </div>
-
-      <!-- Weight log list -->
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <span style="font-size:14px; font-weight:700; color:var(--muted);">יומן שקילות</span>
-        <button class="btn btn-sm btn-ghost" onclick="if(confirm('למחוק את כל יומן המשקל?')) clearWeightLog()">🗑 נקה</button>
-      </div>
-      <div id="wt-list"></div>
-    </div>
-
-    <!-- ───── MEASUREMENTS TAB ───── -->
-    <div id="mtab-content-measure" style="display:none; padding:0 20px;">
-
-      <!-- Log measurement card -->
-      <div class="card" style="margin-bottom:14px; border-color:rgba(37,99,235,0.3);">
-        <div style="font-size:13px; font-weight:700; margin-bottom:12px;">📍 מדידת היקפים (ס"מ)</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-          <div>
-            <label class="lbl">חזה</label>
-            <input class="input" id="ms-chest" type="number" step="0.5" inputmode="decimal" placeholder="100">
-          </div>
-          <div>
-            <label class="lbl">בטן</label>
-            <input class="input" id="ms-belly" type="number" step="0.5" inputmode="decimal" placeholder="90">
-          </div>
-          <div>
-            <label class="lbl">ירך</label>
-            <input class="input" id="ms-thigh" type="number" step="0.5" inputmode="decimal" placeholder="55">
-          </div>
-          <div>
-            <label class="lbl">יד קדמית</label>
-            <input class="input" id="ms-arm" type="number" step="0.5" inputmode="decimal" placeholder="35">
-          </div>
-          <div>
-            <label class="lbl">תאריך</label>
-            <input class="input" id="ms-date" type="date">
-          </div>
-        </div>
-        <div style="margin-top:8px;">
-          <label class="lbl">הערה (אופציונלי)</label>
-          <input class="input" id="ms-note" placeholder='למשל: "בוקר, על קיבה ריקה"'>
-        </div>
-        <button class="btn btn-w" style="margin-top:12px; background:linear-gradient(135deg,#2563eb,#1d4ed8);" onclick="logMeasurement()">✓ שמור מדידה</button>
-        <div id="ms-msg" style="display:none; margin-top:10px; text-align:center; font-size:13px; font-weight:700;"></div>
-      </div>
-
-      <!-- Latest summary -->
+      <!-- Latest values + change per metric -->
       <div class="card" style="padding:14px; margin-bottom:14px;">
         <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:10px;">📊 ערכים נוכחיים ושינוי</div>
         <div id="ms-summary" style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px;"></div>
       </div>
 
-      <!-- Measurements log list -->
+      <!-- Unified timeline -->
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <span style="font-size:14px; font-weight:700; color:var(--muted);">יומן מדידות</span>
-        <button class="btn btn-sm btn-ghost" onclick="if(confirm('למחוק את כל יומן המדידות?')) clearMeasurements()">🗑 נקה</button>
+        <span style="font-size:14px; font-weight:700; color:var(--muted);">📅 יומן מעקב</span>
+        <button class="btn btn-sm btn-ghost" onclick="clearAllBodyData()">🗑 נקה</button>
       </div>
-      <div id="ms-list"></div>
+      <div id="bd-timeline"></div>
     </div>
   </div>
 
@@ -1358,8 +1315,7 @@ let entries = [];
 let history = [];
 let pantry  = [];
 let weightLog = [];
-let measurements = []; // {id, date, chest, belly, thigh, arm, note}
-let currentMtab = 'weight';
+let measurements = []; // {id, date, neck, chest, belly, thigh, arm, hip, bodyFat, note}
 let currentGender = "male";
 let currentGoal   = "lose";
 let currentRate   = 0.5;
@@ -1403,7 +1359,7 @@ function listenFirebase() {
   db.ref(`${uid}/weightLog`).on('value', snap => { weightLog = snap.val() ? Object.values(snap.val()) : []; });
   db.ref(`${uid}/measurements`).on('value', snap => {
     measurements = snap.val() ? Object.values(snap.val()) : [];
-    if (document.getElementById('screen-weight')?.classList.contains('active') && currentMtab === 'measure') renderMeasurements();
+    if (document.getElementById('screen-weight')?.classList.contains('active')) renderWeight();
   });
 }
 
@@ -1973,7 +1929,7 @@ function showScreen(name) {
   if (name==='dashboard') renderDashboard();
   if (name==='history')   renderHistory();
   if (name==='settings')  renderSettings();
-  if (name==='weight')    { renderWeight(); renderMeasurements(); setMtab(currentMtab); }
+  if (name==='weight')    renderWeight();
   if (name==='ai')        { initAiChat(); setTimeout(()=>document.getElementById('ai-input').focus(),200); }
 }
 
@@ -3607,9 +3563,10 @@ bread=לחמים ומאפים, dairy=גבינות ומעדני חלב, meat=בש
 {"weight":78.3,"note":"הערה אופציונלית"}
 \`\`\`
 
-אם המשתמש מדווח על **היקפי גוף** (חזה/בטן/ירך/יד קדמית, כולם בס"מ) — הוסף בלוק LOG_MEASURE. הוסף רק את השדות שהמשתמש ציין. שמות השדות: chest, belly, thigh, arm.
+אם המשתמש מדווח על **היקפי גוף** (צוואר/חזה/בטן/ירך/יד קדמית/ירכיים, כולם בס"מ) — הוסף בלוק LOG_MEASURE. הוסף רק את השדות שהמשתמש ציין. שמות השדות: neck, chest, belly, thigh, arm, hip.
+אם המשתמש דיווח גם על צוואר וגם על בטן — אחוז השומן יחושב אוטומטית באפליקציה, אין צורך לחשב אותו בעצמך.
 \`\`\`LOG_MEASURE
-{"chest":100,"belly":90,"thigh":55,"arm":35,"note":"הערה אופציונלית"}
+{"neck":38,"chest":100,"belly":90,"thigh":55,"arm":35,"note":"הערה אופציונלית"}
 \`\`\`
 
 חוקים לבלוקים האלה:
@@ -4050,6 +4007,20 @@ async function aiSaveMeasurement(md) {
     }
   });
   if (!summary.length) return null;
+
+  // Derive body fat when neck + belly are available (falling back to last known values)
+  const isFemale = profile?.gender === 'female';
+  const prevRecs = [...measurements].sort((a,b)=>a.date.localeCompare(b.date)).reverse();
+  const lastOf = k => prevRecs.find(m => typeof m[k] === 'number')?.[k];
+  const bf = computeBodyFat({
+    neck:   rec.neck  ?? lastOf('neck'),
+    belly:  rec.belly ?? lastOf('belly'),
+    hip:    isFemale ? (rec.hip ?? lastOf('hip')) : 0,
+    height: profile?.height,
+    isFemale
+  });
+  if (bf !== null) { rec.bodyFat = bf; summary.push(`אחוז שומן ${bf}%`); }
+
   const idx = measurements.findIndex(m => m.date === date);
   if (idx >= 0) {
     rec.id = measurements[idx].id;
@@ -4059,7 +4030,7 @@ async function aiSaveMeasurement(md) {
   }
   measurements.sort((a,b) => a.date.localeCompare(b.date));
   await fbSet('measurements', measurements);
-  if (document.getElementById('screen-weight')?.classList.contains('active')) renderMeasurements();
+  if (document.getElementById('screen-weight')?.classList.contains('active')) renderWeight();
   return { date, dateLabel: _aiDateLabel(date), note, summary: summary.join(' · ') };
 }
 
@@ -4068,8 +4039,8 @@ async function aiSaveMeasurement(md) {
 // ══════════════════════════════════════════
 function renderWeight() {
   // Set today's date as default
-  const dateEl = document.getElementById('wt-date');
-  if (!dateEl.value) dateEl.value = todayStr();
+  const dateEl = document.getElementById('bd-date');
+  if (dateEl && !dateEl.value) dateEl.value = todayStr();
 
   const sorted = [...weightLog].sort((a,b)=>a.date.localeCompare(b.date));
   const latest = sorted[sorted.length-1];
@@ -4077,7 +4048,6 @@ function renderWeight() {
   const count  = sorted.length;
 
   // Summary stats
-  document.getElementById('wt-entries-count').textContent = count;
   if (latest) {
     document.getElementById('wt-current').textContent = latest.weight.toFixed(1)+' ק"ג';
   } else {
@@ -4092,6 +4062,10 @@ function renderWeight() {
   } else {
     document.getElementById('wt-change').textContent = '-';
   }
+  // Latest recorded body-fat percentage
+  const bfLatest = [...(measurements||[])].sort((a,b)=>a.date.localeCompare(b.date))
+    .reverse().find(m => typeof m.bodyFat === 'number');
+  document.getElementById('wt-bf').textContent = bfLatest ? bfLatest.bodyFat.toFixed(1)+'%' : '-';
 
   // Chart
   renderWeightChart(sorted);
@@ -4099,11 +4073,12 @@ function renderWeight() {
   // Goal status card
   renderWeightGoalStatus(latest);
 
-  // Body-fat calculator prefill (height from profile, belly from latest measurement)
+  // Entry-form helpers (show hips field for women, live body-fat preview)
   prefillBodyFatInputs();
 
-  // List
-  renderWeightList(sorted);
+  // Per-metric summary + unified timeline
+  renderMeasurements();
+  renderBodyTimeline();
 }
 
 function renderWeightGoalStatus(latest) {
@@ -4133,65 +4108,56 @@ function renderWeightGoalStatus(latest) {
 // ══════════════════════════════════════════
 function prefillBodyFatInputs() {
   const isFemale = profile?.gender === 'female';
-  const hipWrap = document.getElementById('bf-hip-wrap');
+  const hipWrap = document.getElementById('bd-hip-wrap');
   if (hipWrap) hipWrap.style.display = isFemale ? '' : 'none';
-  const hEl = document.getElementById('bf-height');
-  if (hEl && !hEl.value && profile?.height) hEl.value = profile.height;
-  // Prefill belly from the latest body measurement that has one
-  const bEl = document.getElementById('bf-belly');
-  if (bEl && !bEl.value && Array.isArray(measurements) && measurements.length) {
-    const withBelly = [...measurements].sort((a,b)=>a.date.localeCompare(b.date)).reverse().find(m => typeof m.belly === 'number');
-    if (withBelly) bEl.value = withBelly.belly;
-  }
+  updateBodyFatPreview();
 }
 
-function calcBodyFat() {
-  const neck   = parseFloat(document.getElementById('bf-neck').value);
-  const belly  = parseFloat(document.getElementById('bf-belly').value);
-  const height = parseFloat(document.getElementById('bf-height').value);
-  const isFemale = profile?.gender === 'female';
-  const hip = isFemale ? parseFloat(document.getElementById('bf-hip').value) : 0;
-
-  const resEl = document.getElementById('bf-result');
-  const show = (msg, isErr) => {
-    resEl.style.display = 'block';
-    if (isErr) {
-      document.getElementById('bf-pct').textContent = '⚠️';
-      document.getElementById('bf-category').textContent = msg;
-      document.getElementById('bf-detail').textContent = '';
-    }
-  };
-
-  if (!neck || !belly || !height || (isFemale && !hip)) { show('נא למלא את כל השדות', true); return; }
-  if (neck < 20 || neck > 70 || belly < 40 || belly > 220 || height < 100 || height > 230) { show('ערכים מחוץ לטווח סביר', true); return; }
+// Core formula — returns null when inputs are missing or out of range.
+function computeBodyFat({neck, belly, hip, height, isFemale}) {
+  if (!neck || !belly || !height || (isFemale && !hip)) return null;
+  if (neck < 20 || neck > 70 || belly < 40 || belly > 220 || height < 100 || height > 230) return null;
   const circ = isFemale ? (belly + hip - neck) : (belly - neck);
-  if (circ <= 0) { show('היקף הבטן חייב להיות גדול מהיקף הצוואר', true); return; }
-
+  if (circ <= 0) return null;
   const bf = isFemale
     ? 495 / (1.29579 - 0.35004*Math.log10(circ) + 0.22100*Math.log10(height)) - 450
     : 495 / (1.0324  - 0.19077*Math.log10(circ) + 0.15456*Math.log10(height)) - 450;
+  if (!isFinite(bf) || bf < 2 || bf > 60) return null;
+  return +bf.toFixed(1);
+}
 
-  if (!isFinite(bf) || bf < 2 || bf > 60) { show('התוצאה לא סבירה — בדוק את המדידות', true); return; }
-
-  // Category bands (men / women)
+function bodyFatBand(bf, isFemale) {
   const bands = isFemale
     ? [{max:13,label:'שומן חיוני',c:'#2563eb'},{max:20,label:'ספורטיבי 🏆',c:'#16a34a'},{max:24,label:'כושר טוב 💪',c:'#65a30d'},{max:31,label:'ממוצע',c:'#d97706'},{max:99,label:'גבוה',c:'#dc2626'}]
     : [{max:5, label:'שומן חיוני',c:'#2563eb'},{max:13,label:'ספורטיבי 🏆',c:'#16a34a'},{max:17,label:'כושר טוב 💪',c:'#65a30d'},{max:24,label:'ממוצע',c:'#d97706'},{max:99,label:'גבוה',c:'#dc2626'}];
-  const band = bands.find(b => bf <= b.max);
+  return bands.find(b => bf <= b.max);
+}
 
-  const fatMass = profile?.weight ? (profile.weight * bf / 100) : null;
-  const leanMass = profile?.weight && fatMass !== null ? (profile.weight - fatMass) : null;
-
-  resEl.style.display = 'block';
-  const pctEl = document.getElementById('bf-pct');
-  pctEl.textContent = bf.toFixed(1) + '%';
-  pctEl.style.color = band.c;
-  const catEl = document.getElementById('bf-category');
-  catEl.textContent = band.label;
-  catEl.style.color = band.c;
-  document.getElementById('bf-detail').textContent = fatMass !== null
-    ? `מסת שומן ~${fatMass.toFixed(1)} ק"ג · מסה רזה ~${leanMass.toFixed(1)} ק"ג (לפי משקל ${profile.weight} ק"ג)`
-    : 'עדכן משקל בפרופיל כדי לראות מסת שומן בק"ג';
+// Live preview inside the unified entry form
+function updateBodyFatPreview() {
+  const txt = document.getElementById('bd-bf-text');
+  const box = document.getElementById('bd-bf-box');
+  if (!txt) return;
+  const isFemale = profile?.gender === 'female';
+  const bf = computeBodyFat({
+    neck:   parseFloat(document.getElementById('bd-neck').value),
+    belly:  parseFloat(document.getElementById('bd-belly').value),
+    hip:    isFemale ? parseFloat(document.getElementById('bd-hip').value) : 0,
+    height: profile?.height,
+    isFemale
+  });
+  if (bf === null) {
+    txt.textContent = isFemale
+      ? 'מלא צוואר + בטן + ירכיים כדי לחשב אוטומטית'
+      : 'מלא צוואר + בטן כדי לחשב אוטומטית';
+    box.style.background = '#fffbeb'; box.style.borderColor = '#fde68a'; box.style.color = '#92400e';
+    return;
+  }
+  const band = bodyFatBand(bf, isFemale);
+  const w = parseFloat(document.getElementById('bd-weight').value) || profile?.weight;
+  const mass = w ? ` · מסת שומן ~${(w*bf/100).toFixed(1)} ק"ג · מסה רזה ~${(w - w*bf/100).toFixed(1)} ק"ג` : '';
+  txt.innerHTML = `<strong style="font-size:15px;">${bf}%</strong> — ${band.label}${mass}`;
+  box.style.background = '#f0fdf4'; box.style.borderColor = '#86efac'; box.style.color = '#166534';
 }
 
 function renderWeightChart(sorted) {
@@ -4328,65 +4294,6 @@ function renderWeightChart(sorted) {
   if (scroller) scroller.scrollLeft = scroller.scrollWidth;
 }
 
-function renderWeightList(sorted) {
-  const listEl = document.getElementById('wt-list');
-  if (!sorted.length) {
-    listEl.innerHTML = `<div style="text-align:center;padding:28px;color:var(--muted);">
-      <div style="font-size:36px;margin-bottom:8px;">⚖️</div>
-      <div>אין שקילות עדיין — הוסף את הראשונה!</div>
-    </div>`;
-    return;
-  }
-  listEl.innerHTML = [...sorted].reverse().map((e,i,arr)=>{
-    const prev = arr[i+1];
-    const diff = prev ? (e.weight - prev.weight).toFixed(1) : null;
-    const sign = diff > 0 ? '+' : '';
-    const col  = diff < 0 ? 'var(--accent)' : diff > 0 ? 'var(--danger)' : 'var(--muted)';
-    const dayStr = new Date(e.date+'T12:00:00').toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
-    return `<div class="card-sm" style="margin-bottom:8px;display:flex;align-items:center;gap:12px;">
-      <div style="width:42px;height:42px;border-radius:10px;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">⚖️</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:14px;font-weight:700;">${e.weight.toFixed(1)} ק"ג</div>
-        <div style="font-size:11px;color:var(--muted);">${dayStr}${e.note?' · '+e.note:''}</div>
-      </div>
-      ${diff!==null?`<div style="font-size:14px;font-weight:800;color:${col};">${sign}${diff}</div>`:'<div style="font-size:11px;color:var(--dim);">נקודת פתיחה</div>'}
-      <button onclick="deleteWeight('${e.id}')" style="background:var(--card2);border:1px solid var(--border);border-radius:8px;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:12px;flex-shrink:0;">✕</button>
-    </div>`;
-  }).join('');
-}
-
-async function logWeight() {
-  const wVal = parseFloat(document.getElementById('wt-input').value);
-  const date  = document.getElementById('wt-date').value || todayStr();
-  const note  = document.getElementById('wt-note').value.trim();
-  if (!wVal || wVal < 20 || wVal > 300) {
-    document.getElementById('wt-msg').style.display='block';
-    document.getElementById('wt-msg').style.color='var(--danger)';
-    document.getElementById('wt-msg').textContent='⚠️ הזן משקל תקין (20–300 ק"ג)';
-    setTimeout(()=>document.getElementById('wt-msg').style.display='none',2500);
-    return;
-  }
-  // Replace if same date exists
-  weightLog = weightLog.filter(e=>e.date!==date);
-  weightLog.push({id:uid(), date, weight:wVal, note});
-  weightLog.sort((a,b)=>a.date.localeCompare(b.date));
-  await fbSet('weightLog', weightLog);
-
-  // Also update profile weight with latest
-  if (profile) {
-    profile.weight = wVal;
-    await fbSet('profile', profile);
-  }
-
-  document.getElementById('wt-input').value='';
-  document.getElementById('wt-note').value='';
-  const msg = document.getElementById('wt-msg');
-  msg.style.display='block'; msg.style.color='var(--accent)';
-  msg.textContent='✅ המשקל נשמר בהצלחה!';
-  setTimeout(()=>msg.style.display='none',2500);
-  renderWeight();
-}
-
 async function deleteWeight(id) {
   weightLog = weightLog.filter(e=>e.id!==id);
   await fbSet('weightLog', weightLog);
@@ -4403,153 +4310,243 @@ async function clearWeightLog() {
 // BODY MEASUREMENTS TRACKING
 // ══════════════════════════════════════════
 const MEASURE_FIELDS = [
+  {key:'neck',  label:'צוואר',    emoji:'🧣'},
   {key:'chest', label:'חזה',      emoji:'🧍'},
   {key:'belly', label:'בטן',      emoji:'⬭'},
   {key:'thigh', label:'ירך',      emoji:'🦵'},
-  {key:'arm',   label:'יד קדמית', emoji:'💪'}
+  {key:'arm',   label:'יד קדמית', emoji:'💪'},
+  {key:'hip',   label:'ירכיים',   emoji:'🍐'}
 ];
 
-function setMtab(name) {
-  currentMtab = name;
-  const wTab = document.getElementById('mtab-weight');
-  const mTab = document.getElementById('mtab-measure');
-  const wContent = document.getElementById('mtab-content-weight');
-  const mContent = document.getElementById('mtab-content-measure');
-  if (!wTab || !mTab || !wContent || !mContent) return;
-  if (name === 'weight') {
-    wTab.classList.add('active-blue');
-    mTab.classList.remove('active-blue');
-    wContent.style.display = '';
-    mContent.style.display = 'none';
-    renderWeight();
-  } else {
-    mTab.classList.add('active-blue');
-    wTab.classList.remove('active-blue');
-    mContent.style.display = '';
-    wContent.style.display = 'none';
-    renderMeasurements();
-  }
-}
-
+// Per-metric summary (latest value + change since first record)
 function renderMeasurements() {
-  const dateEl = document.getElementById('ms-date');
-  if (dateEl && !dateEl.value) dateEl.value = todayStr();
-
-  const sorted = [...measurements].sort((a,b)=>a.date.localeCompare(b.date));
-  const latest = sorted[sorted.length-1];
-  const first  = sorted[0];
-
-  // Summary grid: latest value + change vs first per field
   const sumEl = document.getElementById('ms-summary');
-  if (sumEl) {
-    sumEl.innerHTML = MEASURE_FIELDS.map(f => {
-      const cur  = latest?.[f.key];
-      const init = first?.[f.key];
-      const hasCur  = typeof cur === 'number';
-      const hasInit = typeof init === 'number' && sorted.length >= 2;
-      const diff = hasCur && hasInit ? +(cur - init).toFixed(1) : null;
-      const sign = diff > 0 ? '+' : '';
-      const col  = diff < 0 ? 'var(--accent)' : diff > 0 ? 'var(--danger)' : 'var(--muted)';
-      return `<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">${f.emoji} ${f.label}</div>
-        <div style="display:flex;align-items:baseline;gap:6px;">
-          <div style="font-size:18px;font-weight:800;">${hasCur ? cur.toFixed(1) : '–'}</div>
-          <div style="font-size:10px;color:var(--muted);">${hasCur ? 'ס"מ' : ''}</div>
-          ${diff !== null ? `<div style="font-size:11px;font-weight:700;color:${col};margin-right:auto;">${sign}${diff}</div>` : ''}
-        </div>
-      </div>`;
-    }).join('');
-  }
+  if (!sumEl) return;
+  const sorted = [...measurements].sort((a,b)=>a.date.localeCompare(b.date));
+  const latestOf = key => [...sorted].reverse().find(m => typeof m[key] === 'number')?.[key];
+  const firstOf  = key => sorted.find(m => typeof m[key] === 'number')?.[key];
 
-  // List
-  const listEl = document.getElementById('ms-list');
-  if (!listEl) return;
-  if (!sorted.length) {
-    listEl.innerHTML = `<div style="text-align:center;padding:28px;color:var(--muted);">
-      <div style="font-size:36px;margin-bottom:8px;">📏</div>
-      <div>אין מדידות עדיין — הוסף את הראשונה!</div>
-    </div>`;
+  // Only render metrics the user has actually recorded, plus body fat
+  const metrics = [
+    ...MEASURE_FIELDS.map(f => ({...f, unit:'ס"מ'})),
+    {key:'bodyFat', label:'אחוז שומן', emoji:'🧮', unit:'%'}
+  ].filter(m => latestOf(m.key) !== undefined);
+
+  if (!metrics.length) {
+    sumEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:12px;padding:8px;">עוד לא נרשמו היקפים או אחוז שומן</div>';
     return;
   }
-  listEl.innerHTML = [...sorted].reverse().map((e,i,arr)=>{
-    const prev = arr[i+1];
-    const dayStr = new Date(e.date+'T12:00:00').toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
-    const cells = MEASURE_FIELDS.map(f => {
-      const v = e[f.key];
-      if (typeof v !== 'number') return '';
-      const prevV = prev?.[f.key];
-      let diffTxt = '';
-      if (typeof prevV === 'number') {
-        const d = +(v - prevV).toFixed(1);
-        const s = d > 0 ? '+' : '';
-        const col = d < 0 ? 'var(--accent)' : d > 0 ? 'var(--danger)' : 'var(--muted)';
-        if (d !== 0) diffTxt = ` <span style="font-size:10px;font-weight:700;color:${col};">${s}${d}</span>`;
-      }
-      return `<span style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:3px 7px;font-size:11px;font-weight:600;white-space:nowrap;">${f.label}: <strong>${v.toFixed(1)}</strong>${diffTxt}</span>`;
-    }).filter(Boolean).join(' ');
-    return `<div class="card-sm" style="margin-bottom:8px;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-        <div style="width:38px;height:38px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📏</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:700;">${dayStr}</div>
-          ${e.note ? `<div style="font-size:11px;color:var(--muted);">${e.note}</div>` : ''}
-        </div>
-        <button onclick="deleteMeasurement('${e.id}')" style="background:var(--card2);border:1px solid var(--border);border-radius:8px;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:12px;flex-shrink:0;">✕</button>
+
+  sumEl.innerHTML = metrics.map(m => {
+    const cur  = latestOf(m.key);
+    const init = firstOf(m.key);
+    const diff = (typeof init === 'number' && init !== cur) ? +(cur - init).toFixed(1) : null;
+    const sign = diff > 0 ? '+' : '';
+    const col  = diff < 0 ? 'var(--accent)' : diff > 0 ? 'var(--danger)' : 'var(--muted)';
+    return `<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">${m.emoji} ${m.label}</div>
+      <div style="display:flex;align-items:baseline;gap:5px;">
+        <div style="font-size:18px;font-weight:800;">${cur.toFixed(1)}</div>
+        <div style="font-size:10px;color:var(--muted);">${m.unit}</div>
+        ${diff !== null ? `<div style="font-size:11px;font-weight:700;color:${col};margin-right:auto;">${sign}${diff}</div>` : ''}
       </div>
-      <div style="display:flex;gap:5px;flex-wrap:wrap;">${cells || '<span style="color:var(--muted);font-size:11px;">אין ערכים</span>'}</div>
     </div>`;
   }).join('');
 }
 
-function _readMeasureField(id) {
-  const v = parseFloat(document.getElementById(id).value);
+// ⭐ Unified timeline — one card per date, merging weight + circumferences + body fat.
+// Only values that were actually recorded on that date are shown.
+function renderBodyTimeline() {
+  const listEl = document.getElementById('bd-timeline');
+  if (!listEl) return;
+
+  // Merge both stores by date
+  const byDate = new Map();
+  (weightLog || []).forEach(w => {
+    const d = byDate.get(w.date) || {date: w.date, notes: []};
+    d.weight = w.weight; d.weightId = w.id;
+    if (w.note) d.notes.push(w.note);
+    byDate.set(w.date, d);
+  });
+  (measurements || []).forEach(m => {
+    const d = byDate.get(m.date) || {date: m.date, notes: []};
+    d.measureId = m.id;
+    MEASURE_FIELDS.forEach(f => { if (typeof m[f.key] === 'number') d[f.key] = m[f.key]; });
+    if (typeof m.bodyFat === 'number') d.bodyFat = m.bodyFat;
+    if (m.note && !d.notes.includes(m.note)) d.notes.push(m.note);
+    byDate.set(m.date, d);
+  });
+
+  const days = [...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));
+  if (!days.length) {
+    listEl.innerHTML = `<div style="text-align:center;padding:28px;color:var(--muted);">
+      <div style="font-size:36px;margin-bottom:8px;">📊</div>
+      <div>אין מדידות עדיין — הוסף את הראשונה!</div>
+    </div>`;
+    return;
+  }
+
+  // Newest first; each row compares against the previous record that had that metric
+  const reversed = [...days].reverse();
+  const prevValueOf = (idx, key) => {
+    for (let j = idx + 1; j < reversed.length; j++) {
+      if (typeof reversed[j][key] === 'number') return reversed[j][key];
+    }
+    return undefined;
+  };
+
+  const pill = (label, value, unit, diff, color, bg) => {
+    let diffTxt = '';
+    if (diff !== null && diff !== undefined && diff !== 0) {
+      const s = diff > 0 ? '+' : '';
+      const c = diff < 0 ? 'var(--accent)' : 'var(--danger)';
+      diffTxt = ` <span style="font-size:10px;font-weight:800;color:${c};">${s}${diff}</span>`;
+    }
+    return `<span style="background:${bg};border:1px solid ${color}33;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;white-space:nowrap;color:${color};">
+      ${label}: <strong style="font-size:12px;">${value}${unit}</strong>${diffTxt}</span>`;
+  };
+
+  listEl.innerHTML = reversed.map((d, i) => {
+    const dayStr = new Date(d.date+'T12:00:00').toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short',year:'2-digit'});
+    const pills = [];
+
+    if (typeof d.weight === 'number') {
+      const prev = prevValueOf(i, 'weight');
+      const diff = prev !== undefined ? +(d.weight - prev).toFixed(1) : null;
+      pills.push(pill('⚖️ משקל', d.weight.toFixed(1), ' ק"ג', diff, '#15803d', '#f0fdf4'));
+    }
+    if (typeof d.bodyFat === 'number') {
+      const prev = prevValueOf(i, 'bodyFat');
+      const diff = prev !== undefined ? +(d.bodyFat - prev).toFixed(1) : null;
+      pills.push(pill('🧮 שומן', d.bodyFat.toFixed(1), '%', diff, '#b45309', '#fffbeb'));
+    }
+    MEASURE_FIELDS.forEach(f => {
+      if (typeof d[f.key] !== 'number') return;
+      const prev = prevValueOf(i, f.key);
+      const diff = prev !== undefined ? +(d[f.key] - prev).toFixed(1) : null;
+      pills.push(pill(`${f.emoji} ${f.label}`, d[f.key].toFixed(1), '', diff, '#1d4ed8', '#eff6ff'));
+    });
+
+    return `<div class="card-sm" style="margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div style="width:38px;height:38px;border-radius:10px;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">📅</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:800;">${dayStr}</div>
+          ${d.notes.length ? `<div style="font-size:11px;color:var(--muted);">${d.notes.join(' · ')}</div>` : ''}
+        </div>
+        <button onclick="deleteBodyDay('${d.date}')" title="מחק את כל הרישום ליום זה" style="background:var(--card2);border:1px solid var(--border);border-radius:8px;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:12px;flex-shrink:0;">✕</button>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;">${pills.join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function _readBodyField(id) {
+  const el = document.getElementById(id);
+  if (!el) return null;
+  const v = parseFloat(el.value);
   return (!isNaN(v) && v > 0 && v < 300) ? +v.toFixed(1) : null;
 }
 
-async function logMeasurement() {
-  const date  = document.getElementById('ms-date').value || todayStr();
-  const note  = document.getElementById('ms-note').value.trim();
-  const rec = { id: uid(), date, note };
-  let anyFilled = false;
+// ⭐ Single save path — writes weight to weightLog and circumferences/body-fat to
+// measurements, keeping both storage formats exactly as they were.
+async function logBodyEntry() {
+  const date = document.getElementById('bd-date').value || todayStr();
+  const note = document.getElementById('bd-note').value.trim();
+  const msg  = document.getElementById('bd-msg');
+  const fail = t => {
+    msg.style.display='block'; msg.style.color='var(--danger)'; msg.textContent=t;
+    setTimeout(()=>msg.style.display='none',2800);
+  };
+
+  const weight = _readBodyField('bd-weight');
+  if (weight !== null && (weight < 20 || weight > 300)) { fail('⚠️ משקל לא תקין (20–300 ק"ג)'); return; }
+
+  // Collect circumferences
+  const circ = {};
+  let anyCirc = false;
   MEASURE_FIELDS.forEach(f => {
-    const v = _readMeasureField('ms-'+f.key);
-    if (v !== null) { rec[f.key] = v; anyFilled = true; }
+    const v = _readBodyField('bd-'+f.key);
+    if (v !== null) { circ[f.key] = v; anyCirc = true; }
   });
-  const msg = document.getElementById('ms-msg');
-  if (!anyFilled) {
-    msg.style.display='block'; msg.style.color='var(--danger)';
-    msg.textContent='⚠️ הזן לפחות מדידה אחת';
-    setTimeout(()=>msg.style.display='none',2500);
-    return;
+
+  if (weight === null && !anyCirc) { fail('⚠️ מלא לפחות משקל או מדידה אחת'); return; }
+
+  const saved = [];
+
+  // 1) Weight → weightLog (replace same-date entry)
+  if (weight !== null) {
+    weightLog = weightLog.filter(e => e.date !== date);
+    weightLog.push({id: uid(), date, weight, note});
+    weightLog.sort((a,b)=>a.date.localeCompare(b.date));
+    await fbSet('weightLog', weightLog);
+    if (profile) { profile.weight = weight; await fbSet('profile', profile); }
+    saved.push('משקל');
   }
-  // Replace if same date exists (merge new values over existing)
-  const existingIdx = measurements.findIndex(m => m.date === date);
-  if (existingIdx >= 0) {
-    rec.id = measurements[existingIdx].id;
-    measurements[existingIdx] = { ...measurements[existingIdx], ...rec };
-  } else {
-    measurements.push(rec);
+
+  // 2) Circumferences + derived body fat → measurements (merge into same-date record)
+  if (anyCirc) {
+    const isFemale = profile?.gender === 'female';
+    const rec = { id: uid(), date, note, ...circ };
+    // Compute body fat when we have enough data (fall back to the last known belly/neck)
+    const prevWithVals = [...measurements].sort((a,b)=>a.date.localeCompare(b.date)).reverse();
+    const lastOf = k => prevWithVals.find(m => typeof m[k] === 'number')?.[k];
+    const bf = computeBodyFat({
+      neck:   circ.neck  ?? lastOf('neck'),
+      belly:  circ.belly ?? lastOf('belly'),
+      hip:    isFemale ? (circ.hip ?? lastOf('hip')) : 0,
+      height: profile?.height,
+      isFemale
+    });
+    if (bf !== null) { rec.bodyFat = bf; saved.push(`אחוז שומן ${bf}%`); }
+
+    const idx = measurements.findIndex(m => m.date === date);
+    if (idx >= 0) { rec.id = measurements[idx].id; measurements[idx] = { ...measurements[idx], ...rec }; }
+    else measurements.push(rec);
+    measurements.sort((a,b)=>a.date.localeCompare(b.date));
+    await fbSet('measurements', measurements);
+    saved.push('היקפים');
   }
-  measurements.sort((a,b)=>a.date.localeCompare(b.date));
-  await fbSet('measurements', measurements);
-  MEASURE_FIELDS.forEach(f => document.getElementById('ms-'+f.key).value = '');
-  document.getElementById('ms-note').value = '';
+
+  // Clear the form (keep the date so multiple metrics can be added for one day)
+  ['bd-weight','bd-note', ...MEASURE_FIELDS.map(f=>'bd-'+f.key)].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
   msg.style.display='block'; msg.style.color='var(--accent)';
-  msg.textContent='✅ המדידה נשמרה!';
-  setTimeout(()=>msg.style.display='none',2500);
-  renderMeasurements();
+  msg.textContent = `✅ נשמר: ${saved.join(' · ')}`;
+  setTimeout(()=>msg.style.display='none',3000);
+  renderWeight();
 }
 
 async function deleteMeasurement(id) {
   measurements = measurements.filter(e=>e.id!==id);
   await fbSet('measurements', measurements);
-  renderMeasurements();
+  renderWeight();
+}
+
+// Delete everything recorded on one date (both stores)
+async function deleteBodyDay(date) {
+  if (!confirm(`למחוק את כל הרישומים מתאריך ${new Date(date+'T12:00:00').toLocaleDateString('he-IL')}?`)) return;
+  weightLog    = weightLog.filter(e => e.date !== date);
+  measurements = measurements.filter(m => m.date !== date);
+  await fbSet('weightLog', weightLog);
+  await fbSet('measurements', measurements);
+  renderWeight();
 }
 
 async function clearMeasurements() {
   measurements = [];
   await fbSet('measurements', []);
-  renderMeasurements();
+  renderWeight();
+}
+
+async function clearAllBodyData() {
+  if (!confirm('למחוק את כל יומן המעקב (משקל, היקפים ואחוז שומן)?')) return;
+  weightLog = [];
+  measurements = [];
+  await fbSet('weightLog', []);
+  await fbSet('measurements', []);
+  renderWeight();
 }
 
 // ══════════════════════════════════════════
