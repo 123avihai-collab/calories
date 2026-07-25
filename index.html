@@ -351,6 +351,17 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       </div>
     </div>
 
+    <!-- 📊 Body status — pulled from the body-tracking screen -->
+    <div id="body-status-section" style="padding:12px 20px 0; display:none;">
+      <div class="card" style="padding:14px;" onclick="showScreen('weight')" role="button">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span style="font-size:13px; font-weight:800;">📊 מצב הגוף</span>
+          <span style="font-size:10px; color:var(--muted);" id="body-status-date">–</span>
+        </div>
+        <div style="display:flex; gap:8px;" id="body-status-cards"></div>
+      </div>
+    </div>
+
     <!-- Quick add -->
     <div id="quick-add-section" style="padding:14px 20px 0; display:none;">
       <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:8px;">⭐ הוספה מהירה <span style="font-size:11px; font-weight:400;">· לחץ להוסיף</span></div>
@@ -554,10 +565,23 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
           <label class="lbl">קצב ירידה</label>
           <div id="set-rate-list" style="display:flex; flex-direction:column; gap:6px;"></div>
         </div>
+
+        <!-- ✏️ Manual daily calorie target -->
+        <div style="margin-bottom:12px;">
+          <label style="display:flex; align-items:center; gap:7px; font-size:12px; font-weight:700; cursor:pointer; margin-bottom:8px;">
+            <input type="checkbox" id="set-cal-manual" onchange="toggleCalorieMode()" style="width:15px; height:15px;">
+            ✏️ הזן יעד קלוריות ידני
+          </label>
+          <div id="set-cal-manual-wrap" style="display:none;">
+            <input class="input" id="set-cal-manual-val" type="number" inputmode="numeric" placeholder="1600" oninput="updateSetPreview()">
+            <div id="set-cal-manual-hint" style="font-size:11px; color:var(--muted); margin-top:6px; background:var(--card2); padding:8px 10px; border-radius:8px;">–</div>
+          </div>
+        </div>
+
         <div style="text-align:center; padding:10px; background:var(--accent-light); border-radius:10px; margin-bottom:14px;">
           <div style="font-size:11px; color:var(--muted);">יעד קלוריות חדש</div>
           <div style="font-size:24px; font-weight:800; color:var(--accent);" id="set-preview">-</div>
-          <div style="font-size:10px; color:var(--dim);">קלוריות ליום</div>
+          <div style="font-size:10px; color:var(--dim);" id="set-preview-sub">קלוריות ליום</div>
         </div>
         <button class="btn btn-w" onclick="saveSettings()">שמור שינויים</button>
       </div>
@@ -1390,9 +1414,14 @@ function listenFirebase() {
   });
   db.ref(`${uid}/history`).on('value', snap => { history = snap.val() ? Object.values(snap.val()) : []; });
   db.ref(`${uid}/pantry`).on('value', snap => { pantry = snap.val() ? Object.values(snap.val()) : []; renderQuickAdd(); renderPantryTab(); });
-  db.ref(`${uid}/weightLog`).on('value', snap => { weightLog = snap.val() ? Object.values(snap.val()) : []; });
+  db.ref(`${uid}/weightLog`).on('value', snap => {
+    weightLog = snap.val() ? Object.values(snap.val()) : [];
+    renderBodyStatusCard();
+    if (document.getElementById('screen-weight')?.classList.contains('active')) renderWeight();
+  });
   db.ref(`${uid}/measurements`).on('value', snap => {
     measurements = snap.val() ? Object.values(snap.val()) : [];
+    renderBodyStatusCard();
     if (document.getElementById('screen-weight')?.classList.contains('active')) renderWeight();
   });
 }
@@ -1786,11 +1815,18 @@ function n(v) { return (v||0).toLocaleString('he-IL'); }
 function calcBMR(p) { const b=10*p.weight+6.25*p.height-5*p.age; return p.gender==='male'?b+5:b-161; }
 function calcTDEE(p) { return Math.round(calcBMR(p)*(ACTIVITY[p.activityLevel]||1.55)); }
 function calcTarget(p) {
+  // Manual override — the user typed an explicit daily calorie target
+  if (p.calorieMode === 'manual' && p.manualCalories > 0) return Math.round(p.manualCalories);
   const t=calcTDEE(p);
   if(p.goal==='lose'){ const r=LOSS_RATES.find(x=>x.val===p.lossRate)||LOSS_RATES[1]; return Math.max(t-r.deficit,1200); }
   if(p.goal==='gain') return t+500;
   return t;
 }
+
+// Weekly rate → monthly equivalent (a month ≈ 4.35 weeks)
+function ratePerMonth(valPerWeek) { return +(valPerWeek * 4.345).toFixed(1); }
+// Daily deficit implied by a given weekly loss rate (7700 kcal ≈ 1 kg fat)
+function deficitForWeeklyRate(kgPerWeek) { return Math.round(kgPerWeek * 7700 / 7); }
 
 // ── Macro constants ──
 const KCAL_PROTEIN = 4;
@@ -2050,6 +2086,7 @@ function renderDashboard() {
   // Food list
   renderFoodList();
   renderQuickAdd();
+  renderBodyStatusCard();
 
   // Macros — use getEntryMacros to handle old entries without stored macros
   let totProt = 0, totCarb = 0, totFat = 0;
@@ -2103,6 +2140,64 @@ function renderFoodList() {
       </div>
     </div>`;
   }).join('');
+}
+
+// 📊 Dashboard summary of the latest body data (weight / body fat / total change),
+// pulled from the same weightLog + measurements used by the body-tracking screen.
+function renderBodyStatusCard() {
+  const sec = document.getElementById('body-status-section');
+  const wrap = document.getElementById('body-status-cards');
+  if (!sec || !wrap) return;
+
+  const wSorted = [...(weightLog || [])].sort((a,b)=>a.date.localeCompare(b.date));
+  const latest = wSorted[wSorted.length-1];
+  const first  = wSorted[0];
+  const bfRec  = [...(measurements || [])].sort((a,b)=>a.date.localeCompare(b.date))
+    .reverse().find(m => typeof m.bodyFat === 'number');
+
+  if (!latest && !bfRec) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+
+  // Header shows when the latest data point was recorded
+  const stampDate = latest?.date || bfRec?.date;
+  document.getElementById('body-status-date').textContent = stampDate
+    ? '🗓 ' + new Date(stampDate+'T12:00:00').toLocaleDateString('he-IL',{day:'numeric',month:'short'})
+    : '';
+
+  const box = (value, label, color, extra) => `
+    <div style="flex:1; text-align:center; background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:10px 6px;">
+      <div style="font-size:18px; font-weight:800; color:${color};">${value}</div>
+      <div style="font-size:10px; color:var(--muted); margin-top:2px;">${label}</div>
+      ${extra ? `<div style="font-size:9px; color:var(--dim); margin-top:1px;">${extra}</div>` : ''}
+    </div>`;
+
+  const cards = [];
+
+  if (latest) {
+    cards.push(box(latest.weight.toFixed(1) + ' ק"ג', 'משקל נוכחי', 'var(--accent)'));
+
+    // Total change since the first weigh-in
+    if (first && first !== latest) {
+      const diff = +(latest.weight - first.weight).toFixed(1);
+      const sign = diff > 0 ? '+' : '';
+      const col  = diff < 0 ? 'var(--accent)' : diff > 0 ? 'var(--danger)' : 'var(--muted)';
+      cards.push(box(`${sign}${diff} ק"ג`, 'שינוי כולל', col, `מ-${first.weight.toFixed(1)}`));
+    }
+
+    // Distance from the target weight, when one is set
+    const tw = profile?.targetWeight;
+    if (tw) {
+      const left = +(latest.weight - tw).toFixed(1);
+      cards.push(Math.abs(left) < 0.1
+        ? box('🎯', 'ביעד!', 'var(--accent)')
+        : box(`${Math.abs(left).toFixed(1)} ק"ג`, 'נותרו ליעד', '#2563eb', `יעד ${tw}`));
+    }
+  }
+
+  if (bfRec) cards.push(box(bfRec.bodyFat.toFixed(1) + '%', 'אחוז שומן', '#d97706'));
+
+  // Keep it to one tidy row
+  wrap.innerHTML = cards.slice(0, 4).join('');
 }
 
 function renderQuickAdd() {
@@ -3336,6 +3431,11 @@ function renderSettings() {
   document.getElementById('set-activity').value=profile.activityLevel||'moderate';
   setCurrentGoal=profile.goal||'lose';
   setCurrentRate=profile.lossRate||0.5;
+  // Manual calorie target
+  const calManual = profile.calorieMode === 'manual';
+  document.getElementById('set-cal-manual').checked = calManual;
+  document.getElementById('set-cal-manual-wrap').style.display = calManual ? '' : 'none';
+  document.getElementById('set-cal-manual-val').value = calManual ? (profile.manualCalories || '') : '';
   updateGoalButtons();
   updateSetRateList();
   updateSetPreview();
@@ -3600,30 +3700,106 @@ function updateGoalButtons() {
   document.getElementById('set-lossrate-section').style.display=setCurrentGoal==='lose'?'block':'none';
 }
 function updateSetRateList() {
-  document.getElementById('set-rate-list').innerHTML=LOSS_RATES.map(r=>`
-    <button onclick="setCurrentRate=${r.val};updateSetRateList();updateSetPreview();"
-      style="padding:9px 12px;border-radius:10px;border:1px solid ${setCurrentRate===r.val?'var(--accent)':'var(--border)'};
-             background:${setCurrentRate===r.val?'var(--accent-light)':'transparent'};
+  const manual = document.getElementById('set-cal-manual')?.checked;
+  document.getElementById('set-rate-list').innerHTML=LOSS_RATES.map(r=>{
+    const active = !manual && setCurrentRate===r.val;
+    return `
+    <button onclick="pickLossRate(${r.val})"
+      style="padding:9px 12px;border-radius:10px;border:1px solid ${active?'var(--accent)':'var(--border)'};
+             background:${active?'var(--accent-light)':'transparent'};opacity:${manual?0.55:1};
              cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;align-items:center;width:100%;">
-      <span style="font-size:13px;font-weight:700;color:${setCurrentRate===r.val?'var(--accent)':'var(--text)'};">${r.label}</span>
-      <span style="font-size:12px;color:var(--muted);">−${r.deficit} קל'/יום</span>
-    </button>`).join('');
+      <span style="text-align:right;">
+        <span style="font-size:13px;font-weight:700;color:${active?'var(--accent)':'var(--text)'};">${r.label}</span>
+        <span style="display:block;font-size:10px;color:var(--muted);">≈ ${ratePerMonth(r.val)} ק"ג בחודש</span>
+      </span>
+      <span style="font-size:12px;color:var(--muted);white-space:nowrap;">−${r.deficit} קל'/יום</span>
+    </button>`;
+  }).join('');
 }
+
+// Picking a preset rate turns off manual mode
+function pickLossRate(val) {
+  setCurrentRate = val;
+  const cb = document.getElementById('set-cal-manual');
+  if (cb?.checked) { cb.checked = false; toggleCalorieMode(); return; }
+  updateSetRateList();
+  updateSetPreview();
+}
+
+function toggleCalorieMode() {
+  const manual = document.getElementById('set-cal-manual').checked;
+  document.getElementById('set-cal-manual-wrap').style.display = manual ? '' : 'none';
+  const valEl = document.getElementById('set-cal-manual-val');
+  // Seed the manual field with the currently computed target so it's a starting point
+  if (manual && !valEl.value) valEl.value = _computedTargetFromForm();
+  updateSetRateList();
+  updateSetPreview();
+}
+
+// Target implied by the preset-rate path only (ignores manual override)
+function _computedTargetFromForm() {
+  return calcTarget({
+    age:+document.getElementById('set-age').value||34,
+    height:+document.getElementById('set-height').value||174,
+    weight:+document.getElementById('set-weight').value||79,
+    gender:profile?.gender||'male',
+    activityLevel:document.getElementById('set-activity').value,
+    goal:setCurrentGoal, lossRate:setCurrentRate
+  });
+}
+
 function updateSetPreview() {
-  const p={age:+document.getElementById('set-age').value||34,height:+document.getElementById('set-height').value||174,
+  const manual = document.getElementById('set-cal-manual')?.checked;
+  const base={age:+document.getElementById('set-age').value||34,height:+document.getElementById('set-height').value||174,
     weight:+document.getElementById('set-weight').value||79,gender:profile?.gender||'male',
     activityLevel:document.getElementById('set-activity').value,goal:setCurrentGoal,lossRate:setCurrentRate};
-  if(p.age&&p.height&&p.weight) document.getElementById('set-preview').textContent=n(calcTarget(p));
+  if(!(base.age&&base.height&&base.weight)) return;
+
+  const p = manual
+    ? {...base, calorieMode:'manual', manualCalories:+document.getElementById('set-cal-manual-val').value}
+    : base;
+  const target = calcTarget(p);
+  document.getElementById('set-preview').textContent = n(target);
+
+  // Explain what the chosen number actually means in kg/week and kg/month
+  const tdee = calcTDEE(base);
+  const sub = document.getElementById('set-preview-sub');
+  const deficit = tdee - target;
+  if (Math.abs(deficit) < 30) {
+    sub.textContent = 'קלוריות ליום · שמירה על המשקל';
+  } else {
+    const perWeek = Math.abs(deficit) * 7 / 7700;
+    const dir = deficit > 0 ? 'ירידה' : 'עלייה';
+    sub.textContent = `קלוריות ליום · ${dir} של ~${perWeek.toFixed(2)} ק"ג בשבוע (~${(perWeek*4.345).toFixed(1)} ק"ג בחודש)`;
+  }
+
+  // Manual-mode helper: warn about extreme values and show the implied deficit
+  if (manual) {
+    const hint = document.getElementById('set-cal-manual-hint');
+    const v = +document.getElementById('set-cal-manual-val').value;
+    if (!v) { hint.textContent = 'הזן יעד קלוריות יומי.'; hint.style.color='var(--muted)'; }
+    else if (v < 1200) { hint.innerHTML = `⚠️ <strong>${v} קל׳ נמוך מאוד</strong> — פחות מ-1200 קל׳ ליום לא מומלץ ללא ליווי מקצועי.`; hint.style.color='var(--danger)'; }
+    else if (v > tdee) { hint.innerHTML = `📈 מעל האחזקה שלך (${n(tdee)} קל׳) — צפויה <strong>עלייה</strong> במשקל.`; hint.style.color='var(--warning)'; }
+    else { hint.innerHTML = `גירעון של <strong>${n(tdee - v)} קל׳/יום</strong> מהאחזקה (${n(tdee)} קל׳).`; hint.style.color='var(--muted)'; }
+  }
 }
 
 async function saveSettings() {
+  const calManual = document.getElementById('set-cal-manual').checked;
+  const manualVal = +document.getElementById('set-cal-manual-val').value;
+  if (calManual && (!manualVal || manualVal < 600 || manualVal > 6000)) {
+    alert('יעד קלוריות ידני לא תקין (600–6000).');
+    return;
+  }
   const p={...profile,
     name:document.getElementById('set-name').value,
     age:+document.getElementById('set-age').value,
     height:+document.getElementById('set-height').value,
     weight:+document.getElementById('set-weight').value,
     activityLevel:document.getElementById('set-activity').value,
-    goal:setCurrentGoal, lossRate:setCurrentRate
+    goal:setCurrentGoal, lossRate:setCurrentRate,
+    calorieMode: calManual ? 'manual' : 'auto',
+    manualCalories: calManual ? manualVal : null
   };
   p.targetCalories=calcTarget(p); p.bmr=Math.round(calcBMR(p)); p.tdee=calcTDEE(p);
   // If macro mode is auto (default), refresh macro targets to match new calorie goal
