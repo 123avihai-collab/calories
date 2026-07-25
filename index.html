@@ -203,6 +203,13 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 
 /* Ring */
 #ring-svg { transform: rotate(-90deg); }
+
+/* Swipeable card deck (daily / weekly). LTR container keeps scrollLeft
+   behaviour consistent across browsers; slides restore RTL for content. */
+.swipe-wrap { display: flex; direction: ltr; overflow-x: auto; scroll-snap-type: x mandatory;
+  scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.swipe-wrap::-webkit-scrollbar { display: none; }
+.swipe-slide { flex: 0 0 100%; scroll-snap-align: center; direction: rtl; }
 #ring-filled { transition: stroke-dashoffset 0.7s cubic-bezier(.4,0,.2,1), stroke 0.3s; }
 
 /* Quick add strip — fixed 3 items, no scroll */
@@ -291,41 +298,107 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       </div>
     </div>
 
-    <!-- Ring card -->
+    <!-- Ring card — swipe between daily and weekly -->
     <div style="padding:16px 20px 0;">
-      <div class="card" style="text-align:center; padding:24px 20px; background:#fff;">
-        <div style="display:flex; justify-content:center; margin-bottom:16px;">
-          <div style="position:relative; width:182px; height:182px;">
-            <svg id="ring-svg" width="182" height="182" style="transform:rotate(-90deg);">
-              <circle cx="91" cy="91" r="78" fill="none" stroke="#e8f0fb" stroke-width="13"/>
-              <circle id="ring-filled" cx="91" cy="91" r="78" fill="none" stroke="#16a34a" stroke-width="13"
-                stroke-linecap="round" stroke-dasharray="490" stroke-dashoffset="490"/>
-            </svg>
-            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-              <div style="font-size:34px; font-weight:800; line-height:1; letter-spacing:-1px;" id="ring-number">0</div>
-              <div style="font-size:11px; color:var(--muted); margin-top:4px;" id="ring-label">קל׳ נותרו</div>
-              <div style="font-size:10px; color:var(--dim); margin-top:2px;" id="ring-sub"></div>
+      <!-- Tabs (also switch on swipe) -->
+      <div style="display:flex; justify-content:center; gap:6px; margin-bottom:8px;">
+        <button id="ringtab-day"  onclick="goRingSlide(0)" style="padding:5px 14px; border-radius:14px; border:1px solid var(--border); background:var(--card); font-family:inherit; font-size:11px; font-weight:800; cursor:pointer; transition:all .2s;">📅 צריכה יומית</button>
+        <button id="ringtab-week" onclick="goRingSlide(1)" style="padding:5px 14px; border-radius:14px; border:1px solid var(--border); background:var(--card); font-family:inherit; font-size:11px; font-weight:800; cursor:pointer; transition:all .2s;">🗓 יעד שבועי</button>
+      </div>
+
+      <div class="swipe-wrap" id="ring-swipe">
+        <!-- ── SLIDE 1: DAILY ── -->
+        <div class="swipe-slide">
+          <div class="card" style="text-align:center; padding:24px 20px; background:#fff;">
+            <div style="font-size:11px; font-weight:800; color:var(--muted); margin-bottom:10px;">📅 צריכה יומית · היום</div>
+            <div style="display:flex; justify-content:center; margin-bottom:16px;">
+              <div style="position:relative; width:182px; height:182px;">
+                <svg id="ring-svg" width="182" height="182" style="transform:rotate(-90deg);">
+                  <circle cx="91" cy="91" r="78" fill="none" stroke="#e8f0fb" stroke-width="13"/>
+                  <circle id="ring-filled" cx="91" cy="91" r="78" fill="none" stroke="#16a34a" stroke-width="13"
+                    stroke-linecap="round" stroke-dasharray="490" stroke-dashoffset="490"/>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                  <div style="font-size:34px; font-weight:800; line-height:1; letter-spacing:-1px;" id="ring-number">0</div>
+                  <div style="font-size:11px; color:var(--muted); margin-top:4px;" id="ring-label">קל׳ נותרו</div>
+                  <div style="font-size:10px; color:var(--dim); margin-top:2px;" id="ring-sub"></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; gap:10px; margin-bottom:12px;">
+              <div style="flex:1; text-align:center; padding:10px 4px; background:var(--accent-light); border-radius:10px;">
+                <div style="font-size:18px; font-weight:800; color:var(--accent);" id="stat-consumed">0</div>
+                <div style="font-size:10px; color:var(--accent); opacity:.7; font-weight:600; margin-top:2px;">נצרכו</div>
+              </div>
+              <div style="flex:1; text-align:center; padding:10px 4px; background:var(--blue-light); border-radius:10px;">
+                <div style="font-size:18px; font-weight:800; color:var(--blue);" id="stat-target">0</div>
+                <div style="font-size:10px; color:var(--blue); opacity:.7; font-weight:600; margin-top:2px;">יעד</div>
+              </div>
+              <div style="flex:1; text-align:center; padding:10px 4px; border-radius:10px;" id="stat-remaining-box">
+                <div style="font-size:18px; font-weight:800;" id="stat-remaining">0</div>
+                <div style="font-size:10px; opacity:.7; font-weight:600; margin-top:2px;">נותרו</div>
+              </div>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar" id="progress-bar" style="width:0%; background:linear-gradient(90deg,var(--accent),#4ade80);"></div>
+            </div>
+            <div style="font-size:11px; color:var(--muted); margin-top:5px;" id="pct-label">0% מהיעד</div>
+          </div>
+        </div>
+
+        <!-- ── SLIDE 2: WEEKLY ── -->
+        <div class="swipe-slide">
+          <div class="card" style="text-align:center; padding:24px 20px; background:#fff;">
+            <div style="font-size:11px; font-weight:800; color:var(--muted); margin-bottom:2px;">🗓 יעד שבועי</div>
+            <div style="font-size:9px; color:var(--dim); margin-bottom:10px;" id="wk-range">ראשון–שבת</div>
+            <div style="display:flex; justify-content:center; margin-bottom:16px;">
+              <div style="position:relative; width:182px; height:182px;">
+                <svg width="182" height="182" style="transform:rotate(-90deg);">
+                  <circle cx="91" cy="91" r="78" fill="none" stroke="#e8f0fb" stroke-width="13"/>
+                  <circle id="wk-ring" cx="91" cy="91" r="78" fill="none" stroke="#2563eb" stroke-width="13"
+                    stroke-linecap="round" stroke-dasharray="490" stroke-dashoffset="490" style="transition:stroke-dashoffset .7s cubic-bezier(.4,0,.2,1), stroke .3s;"/>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                  <div style="font-size:32px; font-weight:800; line-height:1; letter-spacing:-1px;" id="wk-number">0</div>
+                  <div style="font-size:11px; color:var(--muted); margin-top:4px;" id="wk-label">קל׳ נותרו השבוע</div>
+                  <div style="font-size:10px; color:var(--dim); margin-top:2px;" id="wk-sub"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Per-day mini bars, Sunday → Saturday -->
+            <div style="display:flex; gap:4px; align-items:flex-end; height:52px; margin-bottom:6px;" id="wk-bars"></div>
+            <div style="display:flex; gap:4px; margin-bottom:12px;" id="wk-bar-labels"></div>
+
+            <div style="display:flex; gap:10px; margin-bottom:12px;">
+              <div style="flex:1; text-align:center; padding:10px 4px; background:var(--accent-light); border-radius:10px;">
+                <div style="font-size:17px; font-weight:800; color:var(--accent);" id="wk-consumed">0</div>
+                <div style="font-size:10px; color:var(--accent); opacity:.7; font-weight:600; margin-top:2px;">נצרכו</div>
+              </div>
+              <div style="flex:1; text-align:center; padding:10px 4px; background:var(--blue-light); border-radius:10px;">
+                <div style="font-size:17px; font-weight:800; color:var(--blue);" id="wk-target">0</div>
+                <div style="font-size:10px; color:var(--blue); opacity:.7; font-weight:600; margin-top:2px;">יעד שבועי</div>
+              </div>
+              <div style="flex:1; text-align:center; padding:10px 4px; background:var(--card2); border-radius:10px;">
+                <div style="font-size:17px; font-weight:800;" id="wk-avg">0</div>
+                <div style="font-size:10px; color:var(--muted); font-weight:600; margin-top:2px;">ממוצע ליום</div>
+              </div>
+            </div>
+
+            <!-- Projection from ACTUAL intake -->
+            <div id="wk-projection" style="padding:12px; border-radius:12px; background:var(--card2); border:1px solid var(--border); text-align:center;">
+              <div style="font-size:10px; color:var(--muted); margin-bottom:3px;">📉 צפי לפי מה שנצרך בפועל</div>
+              <div style="font-size:20px; font-weight:800;" id="wk-proj-value">–</div>
+              <div style="font-size:10px; color:var(--muted); margin-top:3px;" id="wk-proj-detail">–</div>
             </div>
           </div>
         </div>
-        <div style="display:flex; gap:10px; margin-bottom:12px;">
-          <div style="flex:1; text-align:center; padding:10px 4px; background:var(--accent-light); border-radius:10px;">
-            <div style="font-size:18px; font-weight:800; color:var(--accent);" id="stat-consumed">0</div>
-            <div style="font-size:10px; color:var(--accent); opacity:.7; font-weight:600; margin-top:2px;">נצרכו</div>
-          </div>
-          <div style="flex:1; text-align:center; padding:10px 4px; background:var(--blue-light); border-radius:10px;">
-            <div style="font-size:18px; font-weight:800; color:var(--blue);" id="stat-target">0</div>
-            <div style="font-size:10px; color:var(--blue); opacity:.7; font-weight:600; margin-top:2px;">יעד</div>
-          </div>
-          <div style="flex:1; text-align:center; padding:10px 4px; border-radius:10px;" id="stat-remaining-box">
-            <div style="font-size:18px; font-weight:800;" id="stat-remaining">0</div>
-            <div style="font-size:10px; opacity:.7; font-weight:600; margin-top:2px;">נותרו</div>
-          </div>
-        </div>
-        <div class="progress-track">
-          <div class="progress-bar" id="progress-bar" style="width:0%; background:linear-gradient(90deg,var(--accent),#4ade80);"></div>
-        </div>
-        <div style="font-size:11px; color:var(--muted); margin-top:5px;" id="pct-label">0% מהיעד</div>
+      </div>
+
+      <!-- Dots -->
+      <div style="display:flex; justify-content:center; gap:6px; margin-top:8px;">
+        <div id="ringdot-0" style="width:7px; height:7px; border-radius:50%; background:var(--accent); transition:all .2s;"></div>
+        <div id="ringdot-1" style="width:7px; height:7px; border-radius:50%; background:var(--border); transition:all .2s;"></div>
       </div>
     </div>
 
@@ -1956,6 +2029,7 @@ async function init() {
   ANTHROPIC_KEY = (await fbGet('anthropicKey')) || localStorage.getItem('ct-anthropic-key') || '';
 
   showScreen('dashboard');
+  initRingSwipe();
   document.getElementById('fab-btn').style.display = '';
   document.getElementById('bottom-nav').style.display = 'flex';
   updateFbStatusPill();
@@ -2087,6 +2161,7 @@ function renderDashboard() {
   renderFoodList();
   renderQuickAdd();
   renderBodyStatusCard();
+  renderWeeklyCard();
 
   // Macros — use getEntryMacros to handle old entries without stored macros
   let totProt = 0, totCarb = 0, totFat = 0;
@@ -2140,6 +2215,176 @@ function renderFoodList() {
       </div>
     </div>`;
   }).join('');
+}
+
+// ══════════════════════════════════════════
+// 🗓 WEEKLY VIEW — Sunday → Saturday
+// ══════════════════════════════════════════
+
+// Sunday of the week containing `d` (local time), as YYYY-MM-DD
+function weekStart(d) {
+  const dt = new Date((d || todayStr()) + 'T12:00:00');
+  dt.setDate(dt.getDate() - dt.getDay()); // getDay(): 0 = Sunday
+  return dt.toISOString().split('T')[0];
+}
+function addDays(dateStr, n) {
+  const dt = new Date(dateStr + 'T12:00:00');
+  dt.setDate(dt.getDate() + n);
+  return dt.toISOString().split('T')[0];
+}
+
+const WEEKDAY_LETTERS = ['א','ב','ג','ד','ה','ו','ש'];
+
+// Build the current Sun→Sat week from history + today
+function getCurrentWeek() {
+  const start = weekStart(todayStr());
+  const today = todayStr();
+  const all = getAllDays();
+  const byDate = new Map(all.map(d => [d.date, d]));
+  const dailyTarget = profile?.targetCalories || 2000;
+
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const date = addDays(start, i);
+    const rec = byDate.get(date);
+    const consumed = rec ? (rec.entries || []).reduce((s,e)=>s+(e.calories||0), 0) : 0;
+    days.push({
+      date, i,
+      isToday:  date === today,
+      isFuture: date > today,
+      hasData:  !!rec && consumed > 0,
+      consumed,
+      target: rec?.target || dailyTarget
+    });
+  }
+  return { start, end: addDays(start, 6), days, dailyTarget };
+}
+
+function renderWeeklyCard() {
+  if (!profile) return;
+  const wk = getCurrentWeek();
+  const past = wk.days.filter(d => !d.isFuture);
+  const consumed = past.reduce((s,d)=>s+d.consumed, 0);
+  const weeklyTarget = wk.dailyTarget * 7;
+  const remaining = weeklyTarget - consumed;
+  const over = remaining < 0;
+
+  // Range label
+  const fmt = s => new Date(s+'T12:00:00').toLocaleDateString('he-IL',{day:'numeric',month:'short'});
+  document.getElementById('wk-range').textContent = `${fmt(wk.start)} – ${fmt(wk.end)} · ראשון עד שבת`;
+
+  // Ring
+  const pct = Math.min(consumed / weeklyTarget * 100, 100) || 0;
+  const CIRC = 490;
+  const ring = document.getElementById('wk-ring');
+  ring.style.strokeDashoffset = CIRC - (CIRC * pct / 100);
+  ring.style.stroke = over ? 'var(--danger)' : (pct > 85 ? 'var(--warning)' : '#2563eb');
+  const numEl = document.getElementById('wk-number');
+  numEl.textContent = n(Math.abs(remaining));
+  numEl.style.color = over ? 'var(--danger)' : '#2563eb';
+  document.getElementById('wk-label').textContent = over ? '⚠ חריגה שבועית' : 'קל׳ נותרו השבוע';
+  document.getElementById('wk-sub').textContent = `${n(consumed)} / ${n(weeklyTarget)}`;
+
+  // Per-day bars — scale against the highest of (max consumed, daily target)
+  const maxVal = Math.max(wk.dailyTarget, ...wk.days.map(d=>d.consumed)) || 1;
+  document.getElementById('wk-bars').innerHTML = wk.days.map(d => {
+    const h = d.consumed ? Math.max(4, Math.round(d.consumed / maxVal * 48)) : 3;
+    const bg = d.isFuture ? 'var(--border)'
+      : !d.hasData ? '#e8f0fb'
+      : d.consumed > d.target ? 'var(--danger)'
+      : d.isToday ? '#2563eb' : 'var(--accent)';
+    const title = d.hasData ? `${n(d.consumed)} קל׳` : 'אין נתונים';
+    return `<div title="${title}" style="flex:1; height:${h}px; background:${bg}; border-radius:3px; ${d.isToday?'outline:2px solid #bfdbfe;':''}"></div>`;
+  }).join('');
+  document.getElementById('wk-bar-labels').innerHTML = wk.days.map(d =>
+    `<div style="flex:1; text-align:center; font-size:9px; font-weight:${d.isToday?'800':'500'}; color:${d.isToday?'#2563eb':'var(--dim)'};">${WEEKDAY_LETTERS[d.i]}</div>`
+  ).join('');
+
+  // Stat boxes — average over days that actually have data
+  const withData = past.filter(d => d.hasData);
+  const avg = withData.length ? Math.round(consumed / withData.length) : 0;
+  document.getElementById('wk-consumed').textContent = n(consumed);
+  document.getElementById('wk-target').textContent   = n(weeklyTarget);
+  const avgEl = document.getElementById('wk-avg');
+  avgEl.textContent = avg ? n(avg) : '–';
+  avgEl.style.color = !avg ? 'var(--muted)' : avg > wk.dailyTarget ? 'var(--danger)' : 'var(--accent)';
+
+  renderWeeklyProjection(wk, withData);
+}
+
+// Projection from what was ACTUALLY eaten (not the planned deficit).
+// Balance per day = TDEE − consumed; 7700 kcal ≈ 1 kg of body fat.
+function renderWeeklyProjection(wk, withData) {
+  const valEl = document.getElementById('wk-proj-value');
+  const detEl = document.getElementById('wk-proj-detail');
+  const tdee = profile?.tdee || calcTDEE(profile);
+
+  // Prefer completed days; today is partial and would fake a big deficit
+  let basis = withData.filter(d => !d.isToday);
+  let includesToday = false;
+  if (!basis.length && withData.length) { basis = withData; includesToday = true; }
+
+  if (!basis.length) {
+    valEl.textContent = '–';
+    valEl.style.color = 'var(--muted)';
+    detEl.textContent = 'עוד לא נרשמו ארוחות השבוע';
+    return;
+  }
+
+  const totalBalance = basis.reduce((s,d) => s + (tdee - d.consumed), 0);
+  const avgBalance   = totalBalance / basis.length;   // kcal/day surplus(−) or deficit(+)
+  const weeklyKg     = (avgBalance * 7) / 7700;       // projected kg change per week
+
+  const losing = weeklyKg > 0;
+  const abs = Math.abs(weeklyKg);
+  if (abs < 0.05) {
+    valEl.textContent = '≈ שמירה';
+    valEl.style.color = 'var(--muted)';
+  } else {
+    valEl.textContent = `${losing ? '▼' : '▲'} ${abs.toFixed(2)} ק"ג / שבוע`;
+    valEl.style.color = losing ? 'var(--accent)' : 'var(--danger)';
+  }
+
+  const monthly = abs * 4.345;
+  const dayWord = basis.length === 1 ? 'יום' : 'ימים';
+  detEl.innerHTML = `לפי ${basis.length} ${dayWord}${includesToday ? ' (כולל היום — חלקי)' : ''} ·
+    ממוצע ${n(Math.round(basis.reduce((s,d)=>s+d.consumed,0)/basis.length))} קל׳ מול אחזקה ${n(tdee)} קל׳
+    ${abs >= 0.05 ? `· ~${monthly.toFixed(1)} ק"ג בחודש` : ''}`;
+}
+
+// ── Swipe / tab sync for the ring deck ──
+function goRingSlide(i) {
+  const wrap = document.getElementById('ring-swipe');
+  if (!wrap) return;
+  wrap.scrollTo({ left: i * wrap.clientWidth, behavior: 'smooth' });
+  setRingTab(i);
+}
+function setRingTab(i) {
+  const dayBtn  = document.getElementById('ringtab-day');
+  const weekBtn = document.getElementById('ringtab-week');
+  if (!dayBtn || !weekBtn) return;
+  const on  = 'background:linear-gradient(135deg,var(--accent),#15803d); color:#fff; border-color:#15803d;';
+  const onB = 'background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; border-color:#1d4ed8;';
+  const off = 'background:var(--card); color:var(--muted); border-color:var(--border);';
+  const base = 'padding:5px 14px; border-radius:14px; border:1px solid; font-family:inherit; font-size:11px; font-weight:800; cursor:pointer; transition:all .2s;';
+  dayBtn.style.cssText  = base + (i === 0 ? on  : off);
+  weekBtn.style.cssText = base + (i === 1 ? onB : off);
+  document.getElementById('ringdot-0').style.background = i === 0 ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('ringdot-1').style.background = i === 1 ? '#2563eb' : 'var(--border)';
+}
+function initRingSwipe() {
+  const wrap = document.getElementById('ring-swipe');
+  if (!wrap || wrap._inited) return;
+  wrap._inited = true;
+  let t = null;
+  wrap.addEventListener('scroll', () => {
+    clearTimeout(t);
+    t = setTimeout(() => {
+      const i = Math.round(wrap.scrollLeft / Math.max(1, wrap.clientWidth));
+      setRingTab(Math.max(0, Math.min(1, i)));
+    }, 80);
+  });
+  setRingTab(0);
 }
 
 // 📊 Dashboard summary of the latest body data (weight / body fat / total change),
