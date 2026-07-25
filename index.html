@@ -580,16 +580,47 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
         <button class="btn btn-sm btn-w" style="margin-top:10px; background:linear-gradient(135deg,#2563eb,#1d4ed8);" onclick="saveWeightGoal()">💾 שמור יעד משקל</button>
       </div>
 
-      <!-- 🍎 Macro targets card -->
+      <!-- 🍎 Macro targets card — weight-based formula -->
       <div class="card" style="margin-bottom:14px; border-color:rgba(236,72,153,0.3);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
           <div style="font-size:14px; font-weight:700;">🍎 יעדי מאקרו יומיים</div>
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); cursor:pointer;">
             <input type="checkbox" id="set-macro-auto" onchange="toggleMacroMode()" style="width:15px; height:15px;">
-            אוטומטי
+            לפי הנוסחה
           </label>
         </div>
-        <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">כשמסומן "אוטומטי" — נחשב עבורך לפי המטרה שלך. אחרת ניתן לערוך ידנית בגרמים.</div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:12px; line-height:1.5;">
+          חלבון = משקל × ג׳/ק"ג · שומן = משקל × ג׳/ק"ג · פחמימות = מה שנשאר מהקלוריות.<br>
+          שנה כל ערך והשאר יתעדכן מיד. ביטול הסימון = עריכה ידנית מלאה בגרמים.
+        </div>
+
+        <!-- Formula inputs -->
+        <div style="background:var(--card2); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div>
+              <label class="lbl">🔥 קלוריות יעד</label>
+              <input class="input" id="set-macro-cal" type="number" inputmode="numeric" oninput="onMacroFormulaInput()">
+            </div>
+            <div>
+              <label class="lbl">⚖️ משקל גוף (ק"ג)</label>
+              <input class="input" id="set-macro-weight" type="number" step="0.1" inputmode="decimal" oninput="onMacroFormulaInput()">
+            </div>
+            <div>
+              <label class="lbl" style="color:#3b82f6;">💪 חלבון ג׳/ק"ג</label>
+              <input class="input" id="set-macro-ppk" type="number" step="0.1" inputmode="decimal" oninput="onMacroFormulaInput()">
+            </div>
+            <div>
+              <label class="lbl" style="color:#ec4899;">🥑 שומן ג׳/ק"ג</label>
+              <input class="input" id="set-macro-fpk" type="number" step="0.1" inputmode="decimal" oninput="onMacroFormulaInput()">
+            </div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-sm btn-ghost" style="flex:1; font-size:11px;" onclick="resetMacroCoef()">↺ ברירת מחדל (2.2 / 0.7)</button>
+            <button class="btn btn-sm btn-ghost" style="flex:1; font-size:11px;" onclick="useTargetCalories()">🎯 קח יעד קלוריות מהפרופיל</button>
+          </div>
+        </div>
+
+        <!-- Resulting grams (editable in manual mode) -->
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
           <div>
             <label class="lbl" style="color:#3b82f6;">💪 חלבון (ג׳)</label>
@@ -604,7 +635,10 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
             <input class="input" id="set-macro-fat" type="number" inputmode="numeric" oninput="onMacroInput()">
           </div>
         </div>
-        <div id="set-macro-hint" style="font-size:11px; color:var(--muted); margin-top:8px; text-align:center;">–</div>
+
+        <!-- Live breakdown -->
+        <div id="set-macro-breakdown" style="margin-top:10px; padding:10px 12px; border-radius:10px; background:var(--card2); border:1px solid var(--border); font-size:11px; color:var(--muted); line-height:1.7;">–</div>
+
         <button class="btn btn-sm btn-w" style="margin-top:10px; background:linear-gradient(135deg,#ec4899,#be185d);" onclick="saveMacroTargets()">💾 שמור יעדי מאקרו</button>
       </div>
       <!-- Firebase setup -->
@@ -1758,19 +1792,42 @@ function calcTarget(p) {
   return t;
 }
 
-// ⭐ Recommend macro targets in grams based on calorie target + goal.
-// Split guidelines: lose→40/30/30 (higher protein), maintain→30/40/30,
-// gain→25/50/25. Protein and carbs are 4 kcal/g, fat 9 kcal/g.
-function calcMacroTargets(p) {
-  const cal = p.targetCalories || calcTarget(p);
-  let pPct, cPct, fPct;
-  if (p.goal === 'lose')      { pPct=0.40; cPct=0.30; fPct=0.30; }
-  else if (p.goal === 'gain') { pPct=0.25; cPct=0.50; fPct=0.25; }
-  else                        { pPct=0.30; cPct=0.40; fPct=0.30; }
+// ── Macro constants ──
+const KCAL_PROTEIN = 4;
+const KCAL_FAT     = 9;
+const KCAL_CARB    = 4;
+const DEFAULT_PROTEIN_PER_KG = 2.2; // g protein per kg body weight
+const DEFAULT_FAT_PER_KG     = 0.7; // g fat per kg body weight
+
+// ⭐ Macro targets from body weight (not from percentage splits):
+//   protein_g  = weight × protein_per_kg
+//   fat_g      = weight × fat_per_kg
+//   carbs_g    = (calories − protein_kcal − fat_kcal) / 4
+// Every coefficient is overridable from the profile screen.
+function calcMacroTargets(p, override) {
+  const o = override || {};
+  const weight    = +(o.weight    ?? p.weight) || 0;
+  const cal       = +(o.calories  ?? p.macroCalories ?? p.targetCalories ?? calcTarget(p)) || 0;
+  const protPerKg = +(o.protPerKg ?? p.macroCoef?.protPerKg ?? DEFAULT_PROTEIN_PER_KG);
+  const fatPerKg  = +(o.fatPerKg  ?? p.macroCoef?.fatPerKg  ?? DEFAULT_FAT_PER_KG);
+
+  const protG    = weight * protPerKg;
+  const fatG     = weight * fatPerKg;
+  const protKcal = protG * KCAL_PROTEIN;
+  const fatKcal  = fatG  * KCAL_FAT;
+  const carbKcal = cal - protKcal - fatKcal;
+  const carbG    = carbKcal / KCAL_CARB;
+
   return {
-    prot: Math.round((cal * pPct) / 4),
-    carb: Math.round((cal * cPct) / 4),
-    fat:  Math.round((cal * fPct) / 9)
+    prot: Math.max(0, Math.round(protG)),
+    fat:  Math.max(0, Math.round(fatG)),
+    carb: Math.max(0, Math.round(carbG)),
+    // Extra detail for the profile UI (not persisted)
+    _calories: Math.round(cal),
+    _protKcal: Math.round(protKcal),
+    _fatKcal:  Math.round(fatKcal),
+    _carbKcal: Math.round(carbKcal),
+    _shortfall: carbKcal < 0 // calories too low to cover protein + fat
   };
 }
 
@@ -3288,9 +3345,17 @@ function renderSettings() {
   // attach listeners once
   ['set-age','set-height','set-weight'].forEach(id=>{
     const el=document.getElementById(id);
-    el.oninput=()=>{ updateSetPreview(); updateWeightGoalHint(); updateMacroDisplay(); };
+    el.oninput=()=>{
+      updateSetPreview(); updateWeightGoalHint();
+      // Body weight drives the macro formula — mirror it into the macro card
+      if (id === 'set-weight') {
+        const w = +document.getElementById('set-weight').value;
+        if (w) document.getElementById('set-macro-weight').value = w;
+      }
+      onMacroFormulaInput();
+    };
   });
-  document.getElementById('set-activity').onchange=()=>{ updateSetPreview(); updateMacroDisplay(); };
+  document.getElementById('set-activity').onchange=()=>{ updateSetPreview(); onMacroFormulaInput(); };
 
   // 🎯 Weight goal
   document.getElementById('set-target-weight').value = profile.targetWeight || '';
@@ -3300,7 +3365,10 @@ function renderSettings() {
   });
   updateWeightGoalHint();
 
-  // 🍎 Macro targets
+  // 🍎 Macro targets — clear the formula inputs so they repopulate from the profile
+  ['set-macro-cal','set-macro-weight','set-macro-ppk','set-macro-fpk'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
   const mode = profile.macroMode || 'auto';
   document.getElementById('set-macro-auto').checked = (mode === 'auto');
   updateMacroDisplay();
@@ -3345,12 +3413,9 @@ async function saveWeightGoal() {
   if (document.getElementById('screen-weight')?.classList.contains('active')) renderWeight();
 }
 
-// Fill the three macro inputs from either auto-calc or stored manual values
-function updateMacroDisplay() {
-  if (!profile) return;
-  const auto = document.getElementById('set-macro-auto').checked;
-  const hint = document.getElementById('set-macro-hint');
-  // Build a "live" profile using current form values so preview is accurate
+// Calorie target implied by the *other* profile fields (age/height/weight/goal)
+function _liveTargetCalories() {
+  if (!profile) return 0;
   const live = {
     ...profile,
     age: +document.getElementById('set-age').value || profile.age,
@@ -3359,46 +3424,138 @@ function updateMacroDisplay() {
     activityLevel: document.getElementById('set-activity').value,
     goal: setCurrentGoal, lossRate: setCurrentRate
   };
-  live.targetCalories = calcTarget(live);
-  const auto_t = calcMacroTargets(live);
-
-  let show;
-  if (auto) {
-    show = auto_t;
-    ['set-macro-prot','set-macro-carb','set-macro-fat'].forEach(id => {
-      document.getElementById(id).disabled = true;
-      document.getElementById(id).style.opacity = 0.7;
-    });
-  } else {
-    show = profile.macroTargets || auto_t;
-    ['set-macro-prot','set-macro-carb','set-macro-fat'].forEach(id => {
-      document.getElementById(id).disabled = false;
-      document.getElementById(id).style.opacity = 1;
-    });
-  }
-  document.getElementById('set-macro-prot').value = show.prot;
-  document.getElementById('set-macro-carb').value = show.carb;
-  document.getElementById('set-macro-fat').value  = show.fat;
-  const totalCal = show.prot*4 + show.carb*4 + show.fat*9;
-  hint.textContent = `≈ ${totalCal} קל׳ (מתוך יעד ${live.targetCalories})`;
+  return calcTarget(live);
 }
 
-function toggleMacroMode() { updateMacroDisplay(); }
-function onMacroInput() {
-  // Live-update kcal hint while editing
+// Populate the whole macro card: formula inputs, resulting grams, breakdown
+function updateMacroDisplay() {
+  if (!profile) return;
+  const auto = document.getElementById('set-macro-auto').checked;
+  const gramIds = ['set-macro-prot','set-macro-carb','set-macro-fat'];
+
+  // Formula inputs — keep whatever the user typed, otherwise fall back to stored/default
+  const calEl = document.getElementById('set-macro-cal');
+  const wEl   = document.getElementById('set-macro-weight');
+  const ppkEl = document.getElementById('set-macro-ppk');
+  const fpkEl = document.getElementById('set-macro-fpk');
+  if (!calEl.value) calEl.value = profile.macroCalories || _liveTargetCalories();
+  if (!wEl.value)   wEl.value   = +document.getElementById('set-weight').value || profile.weight || '';
+  if (!ppkEl.value) ppkEl.value = profile.macroCoef?.protPerKg ?? DEFAULT_PROTEIN_PER_KG;
+  if (!fpkEl.value) fpkEl.value = profile.macroCoef?.fatPerKg  ?? DEFAULT_FAT_PER_KG;
+
+  gramIds.forEach(id => {
+    const el = document.getElementById(id);
+    el.disabled = auto;          // formula mode → grams are derived, not typed
+    el.style.opacity = auto ? 0.75 : 1;
+  });
+
+  if (auto) {
+    const t = _macroFromForm();
+    document.getElementById('set-macro-prot').value = t.prot;
+    document.getElementById('set-macro-carb').value = t.carb;
+    document.getElementById('set-macro-fat').value  = t.fat;
+  } else {
+    const stored = profile.macroTargets || _macroFromForm();
+    document.getElementById('set-macro-prot').value = stored.prot;
+    document.getElementById('set-macro-carb').value = stored.carb;
+    document.getElementById('set-macro-fat').value  = stored.fat;
+  }
+  renderMacroBreakdown();
+}
+
+// Run the formula against whatever is currently typed in the card
+function _macroFromForm() {
+  return calcMacroTargets(profile, {
+    calories:  +document.getElementById('set-macro-cal').value,
+    weight:    +document.getElementById('set-macro-weight').value,
+    protPerKg: +document.getElementById('set-macro-ppk').value,
+    fatPerKg:  +document.getElementById('set-macro-fpk').value
+  });
+}
+
+// Show kcal split + percentages for the grams currently in the three boxes
+function renderMacroBreakdown() {
+  const el = document.getElementById('set-macro-breakdown');
+  if (!el) return;
   const p = +document.getElementById('set-macro-prot').value || 0;
   const c = +document.getElementById('set-macro-carb').value || 0;
   const f = +document.getElementById('set-macro-fat').value  || 0;
-  const cal = p*4 + c*4 + f*9;
-  document.getElementById('set-macro-hint').textContent = `≈ ${cal} קל׳ (מתוך יעד ${profile?.targetCalories || calcTarget({...profile})})`;
+  const targetCal = +document.getElementById('set-macro-cal').value || 0;
+
+  const pk = p*KCAL_PROTEIN, ck = c*KCAL_CARB, fk = f*KCAL_FAT;
+  const total = pk + ck + fk;
+  const pct = v => total ? Math.round(v/total*100) : 0;
+  const diff = total - targetCal;
+
+  let warn = '';
+  if (c === 0 && targetCal > 0 && (pk + fk) > targetCal) {
+    warn = `<div style="color:var(--danger); font-weight:700; margin-top:4px;">⚠️ החלבון והשומן לבדם עוברים את יעד הקלוריות — הפחת ג׳/ק"ג או העלה קלוריות.</div>`;
+  } else if (Math.abs(diff) > 15 && targetCal > 0) {
+    warn = `<div style="color:var(--warning); margin-top:4px;">⚠️ פער של ${diff > 0 ? '+' : ''}${diff} קל׳ מהיעד שהוגדר.</div>`;
+  }
+
+  el.innerHTML = `
+    <div style="display:flex; justify-content:space-between;">
+      <span>💪 חלבון ${p}ג׳</span><span>${pk} קל׳ · ${pct(pk)}%</span>
+    </div>
+    <div style="display:flex; justify-content:space-between;">
+      <span>🌾 פחמימות ${c}ג׳</span><span>${ck} קל׳ · ${pct(ck)}%</span>
+    </div>
+    <div style="display:flex; justify-content:space-between;">
+      <span>🥑 שומן ${f}ג׳</span><span>${fk} קל׳ · ${pct(fk)}%</span>
+    </div>
+    <div style="display:flex; justify-content:space-between; border-top:1px solid var(--border); margin-top:5px; padding-top:5px; font-weight:800; color:var(--text);">
+      <span>סה״כ</span><span>${total} קל׳${targetCal ? ` / יעד ${targetCal}` : ''}</span>
+    </div>${warn}`;
+}
+
+function toggleMacroMode() { updateMacroDisplay(); }
+
+// A formula input changed → recompute the grams (only meaningful in formula mode)
+function onMacroFormulaInput() {
+  if (!profile) return;
+  if (document.getElementById('set-macro-auto').checked) {
+    const t = _macroFromForm();
+    document.getElementById('set-macro-prot').value = t.prot;
+    document.getElementById('set-macro-carb').value = t.carb;
+    document.getElementById('set-macro-fat').value  = t.fat;
+  }
+  renderMacroBreakdown();
+}
+
+// A gram box was edited by hand (manual mode)
+function onMacroInput() { renderMacroBreakdown(); }
+
+function resetMacroCoef() {
+  document.getElementById('set-macro-ppk').value = DEFAULT_PROTEIN_PER_KG;
+  document.getElementById('set-macro-fpk').value = DEFAULT_FAT_PER_KG;
+  onMacroFormulaInput();
+}
+
+function useTargetCalories() {
+  document.getElementById('set-macro-cal').value = _liveTargetCalories();
+  onMacroFormulaInput();
 }
 
 async function saveMacroTargets() {
   if (!profile) return;
   const auto = document.getElementById('set-macro-auto').checked;
+  const cal  = +document.getElementById('set-macro-cal').value;
+  const ppk  = +document.getElementById('set-macro-ppk').value;
+  const fpk  = +document.getElementById('set-macro-fpk').value;
+
+  if (cal && (cal < 800 || cal > 6000)) { alert('יעד קלוריות לא תקין (800–6000).'); return; }
+  if (ppk < 0 || ppk > 5 || fpk < 0 || fpk > 5) { alert('מקדמי ג׳/ק"ג לא תקינים (0–5).'); return; }
+
+  // Persist the formula settings in both modes so the card reopens as configured.
+  // Storing null when it matches the profile target keeps macros tracking future
+  // goal/rate changes instead of freezing at today's number.
+  profile.macroCalories = (cal && cal !== _liveTargetCalories()) ? cal : null;
+  profile.macroCoef = { protPerKg: ppk || DEFAULT_PROTEIN_PER_KG, fatPerKg: fpk || DEFAULT_FAT_PER_KG };
+
   if (auto) {
     profile.macroMode = 'auto';
-    profile.macroTargets = null;
+    profile.macroTargets = null; // recomputed on the fly by getMacroTargets
   } else {
     const p = +document.getElementById('set-macro-prot').value;
     const c = +document.getElementById('set-macro-carb').value;
