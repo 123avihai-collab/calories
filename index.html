@@ -367,8 +367,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
             </div>
 
             <!-- Per-day mini bars, Sunday → Saturday -->
-            <div style="display:flex; gap:4px; align-items:flex-end; height:52px; margin-bottom:6px;" id="wk-bars"></div>
-            <div style="display:flex; gap:4px; margin-bottom:12px;" id="wk-bar-labels"></div>
+            <div style="display:flex; gap:4px; align-items:flex-end; margin-bottom:12px;" id="wk-bars"></div>
 
             <div style="display:flex; gap:10px; margin-bottom:12px;">
               <div style="flex:1; text-align:center; padding:10px 4px; background:var(--accent-light); border-radius:10px;">
@@ -2321,20 +2320,30 @@ function renderWeeklyCard() {
   document.getElementById('wk-label').textContent = over ? '⚠ חריגה שבועית' : 'קל׳ נותרו השבוע';
   document.getElementById('wk-sub').textContent = `${n(consumed)} / ${n(weeklyTarget)}`;
 
-  // Per-day bars — scale against the highest of (max consumed, daily target)
+  // Per-day columns: calorie value on top, bar, weekday letter.
+  // Bars scale against the highest of (max consumed, daily target).
   const maxVal = Math.max(wk.dailyTarget, ...wk.days.map(d=>d.consumed)) || 1;
+  const BAR_MAX = 46;
   document.getElementById('wk-bars').innerHTML = wk.days.map(d => {
-    const h = d.consumed ? Math.max(4, Math.round(d.consumed / maxVal * 48)) : 3;
+    const h = d.consumed ? Math.max(5, Math.round(d.consumed / maxVal * BAR_MAX)) : 3;
     const bg = d.isFuture ? 'var(--border)'
       : !d.hasData ? '#e8f0fb'
       : d.consumed > d.target ? 'var(--danger)'
       : d.isToday ? '#2563eb' : 'var(--accent)';
+    const valColor = !d.hasData ? 'var(--dim)'
+      : d.consumed > d.target ? 'var(--danger)'
+      : d.isToday ? '#2563eb' : 'var(--accent)';
+    // Shorten to "1.9k" when four digits would overflow a narrow column
+    const valTxt = !d.hasData ? '–'
+      : d.consumed >= 1000 ? (d.consumed/1000).toFixed(1).replace('.0','') + 'k'
+      : String(d.consumed);
     const title = d.hasData ? `${n(d.consumed)} קל׳` : 'אין נתונים';
-    return `<div title="${title}" style="flex:1; height:${h}px; background:${bg}; border-radius:3px; ${d.isToday?'outline:2px solid #bfdbfe;':''}"></div>`;
+    return `<div title="${title}" style="flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:3px;">
+      <div style="font-size:9px; font-weight:${d.hasData?'800':'500'}; color:${valColor}; white-space:nowrap;">${valTxt}</div>
+      <div style="width:100%; height:${h}px; background:${bg}; border-radius:3px; ${d.isToday?'outline:2px solid #bfdbfe;':''}"></div>
+      <div style="font-size:9px; font-weight:${d.isToday?'800':'500'}; color:${d.isToday?'#2563eb':'var(--dim)'};">${WEEKDAY_LETTERS[d.i]}</div>
+    </div>`;
   }).join('');
-  document.getElementById('wk-bar-labels').innerHTML = wk.days.map(d =>
-    `<div style="flex:1; text-align:center; font-size:9px; font-weight:${d.isToday?'800':'500'}; color:${d.isToday?'#2563eb':'var(--dim)'};">${WEEKDAY_LETTERS[d.i]}</div>`
-  ).join('');
 
   // Stat boxes — average over days that actually have data
   const withData = past.filter(d => d.hasData);
