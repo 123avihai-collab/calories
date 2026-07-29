@@ -959,7 +959,13 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       onchange="handleImageFile(this)">
     <!-- Category chips — replaces the old tab bar. Click a category to filter the pantry;
          "הכל" shows everything; "חיפוש" opens the search/manual-add panel. -->
-    <div id="cat-tabs" style="display:flex; gap:6px; overflow-x:auto; padding:2px 2px 10px; margin-bottom:10px; -webkit-overflow-scrolling:touch; scrollbar-width:none;"></div>
+    <div style="display:flex; align-items:center; gap:4px; margin-bottom:10px;">
+      <button id="cat-arrow-right" onclick="scrollCatTabs(1)" title="הקודם"
+        style="flex:0 0 auto; width:26px; height:30px; border-radius:8px; border:1px solid var(--border); background:var(--card); cursor:pointer; font-size:13px; font-weight:800; color:var(--muted); font-family:inherit; display:none;">›</button>
+      <div id="cat-tabs" style="display:flex; gap:6px; overflow-x:auto; padding:2px; flex:1; min-width:0; -webkit-overflow-scrolling:touch; scrollbar-width:none;"></div>
+      <button id="cat-arrow-left" onclick="scrollCatTabs(-1)" title="הבא"
+        style="flex:0 0 auto; width:26px; height:30px; border-radius:8px; border:1px solid var(--border); background:var(--card); cursor:pointer; font-size:13px; font-weight:800; color:var(--muted); font-family:inherit; display:none;">‹</button>
+    </div>
 
     <!-- PANTRY TAB -->
     <div id="tab-content-pantry">
@@ -2703,7 +2709,77 @@ async function setPantryCategory(id, key) {
 let _openCatPickerId = null;
 function togglePantryCatPicker(id) {
   _openCatPickerId = (_openCatPickerId === id) ? null : id;
+  _openQtyPickerId = null;
   renderPantryTab();
+}
+
+// ── Per-item quantity picker ──
+let _openQtyPickerId = null;
+function togglePantryQtyPicker(id) {
+  _openQtyPickerId = (_openQtyPickerId === id) ? null : id;
+  _openCatPickerId = null;
+  renderPantryTab();
+  if (_openQtyPickerId) updateQtyPreview(id);
+}
+
+// Calories per 100g for a pantry item, falling back to its stored portion
+function pantryCal100(item) {
+  if (item.cal100) return item.cal100;
+  if (item.calories && item.grams) return item.calories * 100 / item.grams;
+  return 0;
+}
+
+function setQtyInput(id, grams) {
+  const el = document.getElementById('qty-input-' + id);
+  if (!el) return;
+  el.value = grams;
+  updateQtyPreview(id);
+}
+
+function updateQtyPreview(id) {
+  const item = pantry.find(p => p.id === id);
+  const inp = document.getElementById('qty-input-' + id);
+  const out = document.getElementById('qty-preview-' + id);
+  if (!item || !inp || !out) return;
+  const g = Math.max(0, +inp.value || 0);
+  const cal = Math.round(pantryCal100(item) * g / 100);
+  out.textContent = cal ? cal + ' קל׳' : '–';
+}
+
+async function addFromPantryWithQty(id) {
+  const item = pantry.find(p => p.id === id);
+  const inp = document.getElementById('qty-input-' + id);
+  if (!item || !inp) return;
+  const grams = Math.max(1, Math.round(+inp.value || 0));
+  if (!grams || grams > 5000) { alert('הזן משקל תקין (1–5000 גרם).'); return; }
+
+  const c100 = pantryCal100(item);
+  const calories = Math.round(c100 * grams / 100);
+
+  // Scale stored macros (which are per the item's saved portion) to the new weight
+  let macros = null;
+  if (item.prot != null || item.carb != null || item.fat != null) {
+    const ratio = grams / (item.grams || 100);
+    macros = {
+      prot: Math.round((item.prot || 0) * ratio),
+      carb: Math.round((item.carb || 0) * ratio),
+      fat:  Math.round((item.fat  || 0) * ratio)
+    };
+  }
+
+  await addEntry(item.name, c100, grams, calories, 0, macros, item.cat);
+  _openQtyPickerId = null;
+  renderPantryTab();
+  flashPantryRow(id);
+}
+
+function flashPantryRow(id) {
+  const row = document.querySelector(`[data-pantry-id="${id}"]`);
+  if (!row) return;
+  const prevBg = row.style.background;
+  row.style.background = 'var(--accent-light)';
+  row.style.transition = 'background 0.4s';
+  setTimeout(()=>{ row.style.background = prevBg; }, 600);
 }
 
 function renderPantryTab() {
@@ -2733,7 +2809,9 @@ function renderPantryTab() {
 
   const rowHtml = item => {
     const pickerOpen = (_openCatPickerId === item.id);
+    const qtyOpen    = (_openQtyPickerId === item.id);
     const curKey = pantryCategoryOf(item).key;
+
     const picker = pickerOpen ? `
       <div style="width:100%; margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);">
         <div style="font-size:11px; color:var(--muted); margin-bottom:6px;">🏷 העבר לקטגוריה:</div>
@@ -2746,6 +2824,31 @@ function renderPantryTab() {
                   : 'background:var(--card); color:var(--text); border:1px solid var(--border);'}">${c.label}</button>`).join('')}
         </div>
       </div>` : '';
+
+    // Quantity picker — presets are multiples of the item's saved portion
+    const baseG = item.grams || 100;
+    const qty = qtyOpen ? `
+      <div style="width:100%; margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);">
+        <div style="font-size:11px; color:var(--muted); margin-bottom:6px;">⚖️ בחר כמות (ברירת מחדל ${baseG}ג׳):</div>
+        <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px;">
+          ${[0.5, 1, 1.5, 2, 3].map(mult => {
+            const g = Math.round(baseG * mult);
+            return `<button onclick="setQtyInput('${item.id}', ${g})"
+              style="padding:5px 10px; border-radius:12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit;
+                     background:var(--card); color:var(--text); border:1px solid var(--border);">
+              ${mult === 1 ? 'רגיל' : '×'+mult}<span style="color:var(--muted); font-weight:500;"> ${g}ג׳</span></button>`;
+          }).join('')}
+        </div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input class="input" id="qty-input-${item.id}" type="number" inputmode="numeric" value="${baseG}"
+            oninput="updateQtyPreview('${item.id}')" style="flex:1; font-size:13px; padding:8px 10px;">
+          <span style="font-size:11px; color:var(--muted);">ג׳</span>
+          <div id="qty-preview-${item.id}" style="font-size:13px; font-weight:800; color:var(--accent); background:var(--accent-light); border-radius:8px; padding:6px 10px; white-space:nowrap;">–</div>
+          <button onclick="addFromPantryWithQty('${item.id}')"
+            style="background:linear-gradient(135deg,var(--accent),#15803d); border:none; border-radius:9px; padding:8px 14px; cursor:pointer; color:#fff; font-size:13px; font-weight:800; font-family:inherit; white-space:nowrap;">➕ הוסף</button>
+        </div>
+      </div>` : '';
+
     return `
     <div data-pantry-id="${item.id}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--card2);border-radius:12px;border:1px solid var(--border);margin-bottom:8px;flex-wrap:wrap;">
       <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;border:1px solid #fde68a;">
@@ -2757,9 +2860,11 @@ function renderPantryTab() {
         <div style="font-size:11px;color:var(--muted);">${item.grams}ג׳ · ${item.cal100||'?'} קל׳/100ג׳</div>
       </div>
       <div style="font-size:14px;font-weight:800;color:var(--accent);background:var(--accent-light);border-radius:8px;padding:4px 8px;flex-shrink:0;">${item.calories}<span style="font-size:9px;"> קל׳</span></div>
-      <button onclick="quickAddFromPantry('${item.id}')" style="background:linear-gradient(135deg,var(--accent),#15803d);border:none;border-radius:9px;width:34px;height:34px;cursor:pointer;color:#fff;font-size:18px;font-weight:700;flex-shrink:0;box-shadow:0 3px 8px rgba(22,163,74,0.3);">+</button>
+      <button onclick="quickAddFromPantry('${item.id}')" title="הוסף בכמות הרגילה" style="background:linear-gradient(135deg,var(--accent),#15803d);border:none;border-radius:9px;width:34px;height:34px;cursor:pointer;color:#fff;font-size:18px;font-weight:700;flex-shrink:0;box-shadow:0 3px 8px rgba(22,163,74,0.3);">+</button>
+      <button onclick="togglePantryQtyPicker('${item.id}')" title="בחר כמות" style="background:${qtyOpen?'#dcfce7':'var(--card)'};border:1px solid ${qtyOpen?'#86efac':'var(--border)'};border-radius:9px;width:34px;height:34px;cursor:pointer;font-size:14px;flex-shrink:0;">⚖️</button>
       <button onclick="togglePantryCatPicker('${item.id}')" title="העבר קטגוריה" style="background:${pickerOpen?'#fef3c7':'var(--card)'};border:1px solid ${pickerOpen?'#fde68a':'var(--border)'};border-radius:9px;width:34px;height:34px;cursor:pointer;font-size:14px;flex-shrink:0;">🏷</button>
       <button onclick="removeFromPantry('${item.id}')" style="background:var(--card);border:1px solid var(--border);border-radius:9px;width:34px;height:34px;cursor:pointer;color:var(--muted);font-size:13px;flex-shrink:0;">✕</button>
+      ${qty}
       ${picker}
     </div>`;
   };
@@ -2786,13 +2891,7 @@ async function quickAddFromPantry(id) {
   await addEntry(item.name, item.cal100||0, item.grams, item.calories, 0, macros, item.cat);
   // Visual feedback — flash the row instead of closing the modal so the user
   // can keep adding more foods in one go.
-  const row = document.querySelector(`[data-pantry-id="${id}"]`);
-  if (row) {
-    const prevBg = row.style.background;
-    row.style.background = 'var(--accent-light)';
-    row.style.transition = 'background 0.4s';
-    setTimeout(()=>{ row.style.background = prevBg; }, 600);
-  }
+  flashPantryRow(id);
 }
 
 // ══════════════════════════════════════════
@@ -2911,6 +3010,93 @@ function renderCatTabs() {
   html += `<button style="${chipStyle(pantryFilter==='search')}" onclick="selectCatTab('search')">🔍 חיפוש</button>`;
 
   bar.innerHTML = html;
+  initCatTabScroll();
+  updateCatArrows();
+  // Keep the active chip in view when the filter changes programmatically
+  const active = bar.querySelector('button[style*="rgba(217,119,6"]');
+  if (active) active.scrollIntoView({block:'nearest', inline:'nearest'});
+}
+
+// ── Desktop scrolling for the category strip ──
+// Touch devices swipe natively; a mouse has no horizontal wheel, so add
+// arrow buttons, wheel-to-horizontal mapping, and click-drag panning.
+function initCatTabScroll() {
+  const bar = document.getElementById('cat-tabs');
+  if (!bar || bar._scrollInited) return;
+  bar._scrollInited = true;
+
+  // Vertical wheel → horizontal scroll
+  bar.addEventListener('wheel', e => {
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return; // already horizontal
+    if (bar.scrollWidth <= bar.clientWidth) return;       // nothing to scroll
+    e.preventDefault();
+    bar.scrollLeft += e.deltaY;
+    updateCatArrows();
+  }, { passive: false });
+
+  // Click-and-drag panning
+  let down = false, startX = 0, startScroll = 0, moved = false;
+  bar.addEventListener('mousedown', e => {
+    down = true; moved = false;
+    startX = e.pageX; startScroll = bar.scrollLeft;
+    bar.style.cursor = 'grabbing';
+  });
+  window.addEventListener('mousemove', e => {
+    if (!down) return;
+    const dx = e.pageX - startX;
+    if (Math.abs(dx) > 3) moved = true;
+    bar.scrollLeft = startScroll - dx;
+    updateCatArrows();
+  });
+  window.addEventListener('mouseup', () => {
+    if (!down) return;
+    down = false;
+    bar.style.cursor = '';
+  });
+  // Suppress the click that ends a drag, so panning doesn't select a category
+  bar.addEventListener('click', e => {
+    if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
+  }, true);
+
+  bar.addEventListener('scroll', updateCatArrows);
+  window.addEventListener('resize', updateCatArrows);
+}
+
+// Browsers disagree on scrollLeft in RTL containers: some run 0 → −max going
+// left, others 0 → +max. Probe once so the arrows move the right way everywhere.
+let _rtlScrollSign = null;
+function rtlScrollSign(el) {
+  if (_rtlScrollSign !== null) return _rtlScrollSign;
+  const prev = el.scrollLeft;
+  el.scrollLeft = -1;
+  _rtlScrollSign = el.scrollLeft < 0 ? -1 : 1;
+  el.scrollLeft = prev;
+  return _rtlScrollSign;
+}
+
+function scrollCatTabs(dir) {
+  const bar = document.getElementById('cat-tabs');
+  if (!bar) return;
+  // dir: 1 = towards the start (visually right in RTL), -1 = towards the end
+  const step = Math.max(120, bar.clientWidth * 0.6);
+  bar.scrollBy({ left: -dir * rtlScrollSign(bar) * step, behavior: 'smooth' });
+  setTimeout(updateCatArrows, 350);
+}
+
+// Show each arrow only when there's actually room to scroll that way
+function updateCatArrows() {
+  const bar = document.getElementById('cat-tabs');
+  const right = document.getElementById('cat-arrow-right');
+  const left  = document.getElementById('cat-arrow-left');
+  if (!bar || !right || !left) return;
+  if (bar.scrollWidth <= bar.clientWidth + 4) {
+    right.style.display = 'none'; left.style.display = 'none';
+    return;
+  }
+  const pos = Math.abs(bar.scrollLeft);              // distance from the start edge
+  const maxScroll = bar.scrollWidth - bar.clientWidth;
+  right.style.display = pos < 4 ? 'none' : '';       // can go back towards the start
+  left.style.display  = pos > maxScroll - 4 ? 'none' : ''; // can go further to the end
 }
 
 // ══════════════════════════════════════════
